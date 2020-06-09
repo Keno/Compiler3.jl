@@ -70,43 +70,38 @@ function cthulhu_source(io::IO, mi, optimize, debuginfo, params, config::Cthulhu
     highlight(io, src, "julia", config)
 end
 
-cthulhu_warntype(args...) = cthulhu_warntype(stdout, args...)
-function cthulhu_warntype(io::IO, src, rettype, debuginfo)
-    if VERSION < v"1.1.0-DEV.762"
-    elseif VERSION < v"1.2.0-DEV.229"
-        lineprinter = Base.IRShow.debuginfo[debuginfo]
-    else
-        debuginfo = Base.IRShow.debuginfo(debuginfo)
-        lineprinter = Base.IRShow.__debuginfo[debuginfo]
+cthulhu_print_typed(args...) = cthulhu_warntype(stdout, args...)
+function cthulhu_print_typed(io::IO, src, rettype, debuginfo, msgs, iswarn)
+    debuginfo = Base.IRShow.debuginfo(debuginfo)
+    lineprinter = Base.IRShow.__debuginfo[debuginfo](src)
+
+    function preprinter(io::IO, linestart::String, lineidx::Int32, codeidx::Integer)
+        ret = lineprinter(io, linestart, lineidx, codeidx)
+        for msg in filter(msg->msg[2] == codeidx, msgs)
+            print(io, linestart)
+            printstyled(io, string(" # ", msg[3]), color=:red)
+            println(io)
+        end
+        ret
     end
+    type_printer = iswarn ? InteractiveUtils.warntype_type_printer : Base.IRShow.default_expr_type_printer
 
     lambda_io::IOContext = stdout
     if src.slotnames !== nothing
         lambda_io = IOContext(lambda_io, :SOURCE_SLOTNAMES =>  Base.sourceinfo_slotnames(src))
     end
     print(io, "Body")
-    InteractiveUtils.warntype_type_printer(io, rettype, true)
+    type_printer(io, rettype, true)
     println(io)
-    if VERSION < v"1.1.0-DEV.762"
-        Base.IRShow.show_ir(lambda_io, src, InteractiveUtils.warntype_type_printer)
-    else
-        Base.IRShow.show_ir(lambda_io, src, lineprinter(src), InteractiveUtils.warntype_type_printer)
-    end
+    Base.IRShow.show_ir(lambda_io, src, preprinter, type_printer)
     return nothing
 end
 
-
-function cthulu_typed(io::IO, debuginfo_key, CI, rettype, mi, iswarn)
+function cthulu_typed(io::IO, debuginfo_key, msgs, CI, rettype, mi, iswarn)
     println(io)
     println(io, "│ ─ $(string(Callsite(-1, MICallInfo(mi, rettype))))")
 
-    if iswarn
-        cthulhu_warntype(io, CI, rettype, debuginfo_key)
-    elseif VERSION >= v"1.1.0-DEV.762"
-        show(io, CI, debuginfo = debuginfo_key)
-    else
-        show(io, MIME"text/plain"(), CI=>rettype)
-    end
+    cthulhu_print_typed(io, CI, rettype, debuginfo_key, msgs, iswarn)
     println(io)
 end
 

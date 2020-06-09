@@ -38,7 +38,7 @@ ExtractingInterpreter() = ExtractingInterpreter(
 )
 
 import Core.Compiler: InferenceParams, OptimizationParams, get_world_counter,
-    get_inference_cache, inf_for_methodinstance, cache_result, code_cache,
+    get_inference_cache, code_cache,
     WorldView, lock_mi_inference, unlock_mi_inference, InferenceState
 InferenceParams(ei::ExtractingInterpreter) = InferenceParams(ei.native_interpreter)
 OptimizationParams(ei::ExtractingInterpreter) = OptimizationParams(ei.native_interpreter)
@@ -58,7 +58,7 @@ Core.Compiler.haskey(a::WorldView{<:Dict}, b) =
 Core.Compiler.setindex!(a::Dict, b, c) = setindex!(a, b, c)
 Core.Compiler.may_optimize(ei::ExtractingInterpreter) = false
 Core.Compiler.may_compress(ei::ExtractingInterpreter) = false
-Core.Compiler.should_always_cache_tree(ei::ExtractingInterpreter) = true
+Core.Compiler.may_discard_trees(ei::ExtractingInterpreter) = false
 
 function Core.Compiler.mark_dynamic!(ei::ExtractingInterpreter, sv::InferenceState, msg)
     push!(ei.msgs, (sv.linfo, sv.currpc, msg))

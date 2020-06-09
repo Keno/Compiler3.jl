@@ -136,27 +136,41 @@ Shortcut for [`descend_code_typed`](@ref).
 """
 const descend = descend_code_typed
 
+using Compiler3: ExtractingInterpreter, infer_function, StaticSubGraph, get_codeinfo, find_msgs
+
 ##
 # _descend is the main driver function.
 # src/reflection.jl has the tools to discover methods
 # src/ui.jl provides the user facing interface to which _descend responds
 ##
-function _descend(mi::MethodInstance; iswarn::Bool, params=current_params(), optimize::Bool=true, interruptexc::Bool=true, kwargs...)
+function _descend(ei::ExtractingInterpreter, mi::MethodInstance; iswarn::Bool, params=current_params(), optimize::Bool=true, interruptexc::Bool=true, kwargs...)
     debuginfo = true
     if :debuginfo in keys(kwargs)
         selected = kwargs[:debuginfo]
         # TODO: respect default
         debuginfo = selected == :source
     end
-
+    ssg = StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
     display_CI = true
     while true
         debuginfo_key = debuginfo ? :source : :none
-        (CI, rt, slottypes) = do_typeinf_slottypes(mi, optimize, params)
-        preprocess_ci!(CI, mi, optimize, CONFIG)
+
+        #(CI, rt, slottypes) = do_typeinf_slottypes(mi, optimize, params)
+        #preprocess_ci!(CI, mi, optimize, CONFIG)
+
+        CI = get_codeinfo(ssg, mi)
+        slottypes = CI.slottypes
+        rt = CI.rettype
         callsites = find_callsites(CI, mi, slottypes; params=params, kwargs...)
 
-        display_CI && cthulu_typed(stdout, debuginfo_key, CI, rt, mi, iswarn)
+        if display_CI
+            if !optimize
+                msgs = find_msgs(ei, mi)
+            else
+                msgs = Any[]
+            end
+            cthulu_typed(stdout, debuginfo_key, msgs, CI, rt, mi, iswarn)
+        end
         display_CI = true
 
         TerminalMenus.config(cursor = '•', scroll = :wrap)
@@ -200,7 +214,7 @@ function _descend(mi::MethodInstance; iswarn::Bool, params=current_params(), opt
                 continue
             end
 
-            _descend(next_mi; params=params, optimize=optimize,
+            _descend(ei, next_mi; params=params, optimize=optimize,
                      iswarn=iswarn, debuginfo=debuginfo_key, kwargs...)
 
         elseif toggle === :warn
@@ -251,8 +265,10 @@ function _descend(mi::MethodInstance; iswarn::Bool, params=current_params(), opt
 end
 
 function _descend(@nospecialize(F), @nospecialize(TT); params=current_params(), kwargs...)
-    mi = first_method_instance(F, TT; params=params)
-    _descend(mi; params=params, kwargs...)
+    ei = ExtractingInterpreter()
+    mi, result = infer_function(ei, Tuple{typeof(F), TT.parameters...})
+    ei, ssg = ei, StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
+    _descend(ei, mi; iswarn=false)
 end
 
 descend_code_typed(b::Bookmark; kw...) =
