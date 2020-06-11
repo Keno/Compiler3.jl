@@ -73,6 +73,117 @@ Base.last(tracer::MethodCompileTracer) = tracer.last_method_instance
 
 ## Julia compiler integration
 
+### cache
+
+using Core.Compiler: CodeInstance, MethodInstance
+
+struct GPUCodeCache
+    dict::Dict{MethodInstance,Vector{CodeInstance}}
+    GPUCodeCache() = new(Dict{MethodInstance,Vector{CodeInstance}}())
+end
+
+function Core.Compiler.setindex!(cache::GPUCodeCache, ci::CodeInstance, mi::MethodInstance)
+    cis = get!(cache.dict, mi, CodeInstance[])
+    push!(cis, ci)
+end
+
+const GPU_CI_CACHE = GPUCodeCache()
+
+### interpreter
+
+using Core.Compiler: AbstractInterpreter, InferenceResult, InferenceParams, InferenceState, OptimizationParams
+
+struct GPUInterpreter <: AbstractInterpreter
+    # Cache of inference results for this particular interpreter
+    cache::Vector{InferenceResult}
+    # The world age we're working inside of
+    world::UInt
+
+    # Parameters for inference and optimization
+    inf_params::InferenceParams
+    opt_params::OptimizationParams
+
+    function GPUInterpreter(world::UInt)
+        @assert world <= Base.get_world_counter()
+
+        return new(
+            # Initially empty cache
+            Vector{InferenceResult}(),
+
+            # world age counter
+            world,
+
+            # parameters for inference and optimization
+            InferenceParams(),
+            OptimizationParams(),
+        )
+    end
+end
+
+# Quickly and easily satisfy the AbstractInterpreter API contract
+Core.Compiler.get_world_counter(ni::GPUInterpreter) = ni.world
+Core.Compiler.get_inference_cache(ni::GPUInterpreter) = ni.cache
+Core.Compiler.InferenceParams(ni::GPUInterpreter) = ni.inf_params
+Core.Compiler.OptimizationParams(ni::GPUInterpreter) = ni.opt_params
+Core.Compiler.may_optimize(ni::GPUInterpreter) = true
+Core.Compiler.may_compress(ni::GPUInterpreter) = true
+Core.Compiler.may_discard_trees(ni::GPUInterpreter) = true
+Core.Compiler.mark_dynamic!(ni::GPUInterpreter, sv::InferenceState, msg) = nothing
+
+### world view of the cache
+
+using Core.Compiler: WorldView
+
+function Core.Compiler.haskey(wvc::WorldView{GPUCodeCache}, mi::MethodInstance)
+    Core.Compiler.get(wvc, mi, nothing) !== nothing
+end
+
+function Core.Compiler.get(wvc::WorldView{GPUCodeCache}, mi::MethodInstance, default)
+    cache = wvc.cache
+    for ci in get!(cache.dict, mi, CodeInstance[])
+        if ci.min_world <= wvc.min_world && wvc.max_world <= ci.max_world
+            # TODO: if (code && (code == jl_nothing || jl_ir_flag_inferred((jl_array_t*)code)))
+            return ci
+        end
+    end
+
+    return default
+end
+
+Core.Compiler.WorldView(wvc::WorldView{GPUCodeCache}, min_world::UInt, max_world::UInt) =
+    WorldView(wvc.cache, min_world, max_world)
+
+function Core.Compiler.getindex(wvc::WorldView{GPUCodeCache}, mi::MethodInstance)
+    r = Core.Compiler.get(wvc, mi, nothing)
+    r === nothing && throw(KeyError(mi))
+    return r::CodeInstance
+end
+
+Core.Compiler.setindex!(wvc::WorldView{GPUCodeCache}, ci::CodeInstance, mi::MethodInstance) =
+    Core.Compiler.setindex!(wvc.cache, ci, mi)
+
+### codegen/interence integration
+
+Core.Compiler.code_cache(ni::GPUInterpreter) = WorldView(GPU_CI_CACHE, ni.world)
+
+# No need to do any locking since we're not putting our results into the runtime cache
+Core.Compiler.lock_mi_inference(ni::GPUInterpreter, mi::MethodInstance) = nothing
+Core.Compiler.unlock_mi_inference(ni::GPUInterpreter, mi::MethodInstance) = nothing
+
+function gpu_ci_cache_lookup(mi, min_world, max_world)
+    wvc = WorldView(GPU_CI_CACHE, min_world, max_world)
+    if !Core.Compiler.haskey(wvc, mi)
+        interp = GPUInterpreter(wvc.min_world)
+        src = Core.Compiler.typeinf_ext_toplevel(interp, mi)
+        # inference populates the cache, so we don't need to jl_get_method_inferred
+
+        # FIXME: jl_ci_cache_lookup doesn't handle rettype_const, and needs this `src`
+    end
+    return Core.Compiler.getindex(wvc, mi)
+end
+
+### external interface
+
 function compile_method_instance(job::CompilerJob, method_instance::Core.MethodInstance, world)
     debug_info_kind = if Base.JLOptions().debug_level == 0
         LLVM.API.LLVMDebugEmissionKindNoDebug
@@ -100,7 +211,8 @@ function compile_method_instance(job::CompilerJob, method_instance::Core.MethodI
                     emit_function      = hook_emit_function,
                     emitted_function   = hook_emitted_function,
                     gnu_pubnames       = false,
-                    debug_info_kind    = Cint(debug_info_kind))
+                    debug_info_kind    = Cint(debug_info_kind),
+                    lookup             = @cfunction(gpu_ci_cache_lookup, Any, (Any, UInt, UInt)))
 
     # generate IR
     native_code = ccall(:jl_create_native, Ptr{Cvoid},
@@ -113,9 +225,7 @@ function compile_method_instance(job::CompilerJob, method_instance::Core.MethodI
     llvm_mod = LLVM.Module(llvm_mod_ref)
 
     # get the top-level code
-    # TODO: use our own interpreter
-    interpreter = Core.Compiler.NativeInterpreter(world)
-    code = Core.Compiler.inf_for_methodinstance(interpreter, method_instance, world, world)
+    code = gpu_ci_cache_lookup(method_instance, world, world)
 
     # get the top-level function index
     llvm_func_idx = Ref{Int32}(-1)
