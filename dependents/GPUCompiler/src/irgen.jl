@@ -173,11 +173,18 @@ Core.Compiler.unlock_mi_inference(ni::GPUInterpreter, mi::MethodInstance) = noth
 function gpu_ci_cache_lookup(mi, min_world, max_world)
     wvc = WorldView(GPU_CI_CACHE, min_world, max_world)
     if !Core.Compiler.haskey(wvc, mi)
-        interp = GPUInterpreter(wvc.min_world)
+        interp = GPUInterpreter(min_world)
         src = Core.Compiler.typeinf_ext_toplevel(interp, mi)
         # inference populates the cache, so we don't need to jl_get_method_inferred
+        @assert Core.Compiler.haskey(wvc, mi)
 
-        # FIXME: jl_ci_cache_lookup doesn't handle rettype_const, and needs this `src`
+        # if src is rettyp_const, the codeinfo won't cache ci.inferred
+        # (because it is normally not supposed to be used ever again).
+        # to avoid the need to re-infer, set that field here.
+        ci = Core.Compiler.getindex(wvc, mi)
+        if ci !== nothing && ci.inferred === nothing
+            ci.inferred = src
+        end
     end
     return Core.Compiler.getindex(wvc, mi)
 end
