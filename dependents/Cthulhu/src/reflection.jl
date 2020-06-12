@@ -38,8 +38,19 @@ function transform(::Val{:CuFunction}, callsite, callexpr, CI, mi, slottypes; pa
     return Callsite(callsite.id, CuCallInfo(callinfo(Tuple{widenconst(ft), tt.val.parameters...}, Nothing, params=params)))
 end
 
-function find_callsites(CI, mi, slottypes; params=current_params(), kwargs...)
+function transform(::Val{:pullback}, callsite, callexpr, CI, mi, slottypes; params=nothing, kwargs...)
     sptypes = sptypes_from_meth_instance(mi)
+    tts = map(x->widenconst(argextype(x, CI, sptypes, slottypes)), callexpr.args[3:end])
+    ft = argextype(callexpr.args[2], CI, sptypes, slottypes)
+    return Callsite(callsite.id, PullbackCallInfo(callinfo(Tuple{widenconst(ft), tts...}, Nothing, params=params)))
+end
+
+make_callinfo(cursor::MethodInstance, mi, rt) = MICallInfo(mi, rt)
+
+function find_callsites(CI, fg, cursor, slottypes; params=current_params(), kwargs...)
+    @show cursor
+
+    sptypes = sptypes_from_meth_instance(mi_at_cursor(cursor))
     callsites = Callsite[]
 
     function process_return_type(id, c, rt)
@@ -79,11 +90,13 @@ function find_callsites(CI, mi, slottypes; params=current_params(), kwargs...)
                 if isa(at, Const) && is_return_type(at.val)
                     callsite = process_return_type(id, c, rt)
                 else
-                    callsite = Callsite(id, MICallInfo(c.args[1], rt))
+                    callsite = Callsite(id, make_callinfo(cursor, c.args[1], rt))
                 end
                 mi = get_mi(callsite)
                 if nameof(mi.def.module) == :CUDAnative && mi.def.name == :cufunction
                     callsite = transform(Val(:CuFunction), callsite, c, CI, mi, slottypes; params=params, kwargs...)
+                elseif mi.def.name == :pullback
+                    callsite = transform(Val(:Pullback), callsite, c, CI, mi, slottypes; params=params, kwargs...)
                 end
             elseif c.head === :call
                 rt = CI.ssavaluetypes[id]
@@ -142,18 +155,24 @@ function find_callsites(CI, mi, slottypes; params=current_params(), kwargs...)
                     end
                     thatcher(types[1])
                     sigs = map(ft-> [ft, types[2:end]...], fts)
-                    cis = map(types -> callinfo(Tuple{types...}, rt, params=params), sigs)
+                    cis = map(types -> callinfo(fg, cursor, Tuple{types...}, rt, params=params), sigs)
                     callsite = Callsite(id, MultiCallInfo(Tuple{types...}, rt, cis))
                 else
                     ft = Base.unwrap_unionall(types[1])
                     name = ft.name
+                    @show name.name
                     ci = if nameof(name.module) == :CUDAnative && name.name == Symbol("#kw##cufunction")
                         ft = types[4]
                         # XXX: Simplify
                         tt = types[5].parameters[1].parameters
-                        CuCallInfo(callinfo(Tuple{widenconst(ft), tt...}, Nothing, params=params))
+                        CuCallInfo(callinfo(fg, cursor, Tuple{widenconst(ft), tt...}, Nothing, params=params))
+                    elseif name.name == Symbol("#pullback")
+                        ft = types[2]
+                        @show ft
+                        tt = map(widenconst, types[3:end])
+                        PullbackCallInfo(callinfo(fg, cursor, Tuple{widenconst(ft), tt...}, Nothing, params=params))
                     else
-                        callinfo(Tuple{types...}, rt, params=params)
+                        callinfo(fg, cursor, Tuple{types...}, rt, params=params)
                     end
                     callsite = Callsite(id, ci)
                 end
@@ -165,7 +184,7 @@ function find_callsites(CI, mi, slottypes; params=current_params(), kwargs...)
                     if cfunc === :jl_new_task
                         func = c.args[7]
                         ftype = widenconst(argextype(func, CI, sptypes, slottypes))
-                        callsite = Callsite(id, TaskCallInfo(callinfo(ftype, nothing, params=params)))
+                        callsite = Callsite(id, TaskCallInfo(callinfo(fg, cursor, ftype, nothing, params=params)))
                     end
                 end
             end
@@ -267,7 +286,7 @@ function first_method_instance(@nospecialize(sig); params=current_params())
     end
 end
 
-function callinfo(sig, rt, max=-1; params=current_params())
+function callinfo(graph, cursor::MethodInstance, sig, rt, max=-1; params=current_params())
     methds = Base._methods_by_ftype(sig, -1, params.world)
     (methds === false || length(methds) < 1) && return FailedCallInfo(sig, rt)
     callinfos = CallInfo[]

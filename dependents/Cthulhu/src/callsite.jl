@@ -15,7 +15,7 @@ struct FailedCallInfo <: CallInfo
     rt
 end
 
-function get_mi(ci::FailedCallInfo) 
+function get_mi(ci::FailedCallInfo)
     @error "MethodInstance extraction failed" ci.sig ci.rt
     return nothing
 end
@@ -25,7 +25,7 @@ struct GeneratedCallInfo <: CallInfo
     sig
     rt
 end
-function get_mi(genci::GeneratedCallInfo) 
+function get_mi(genci::GeneratedCallInfo)
     @error "Can't extract MethodInstance from call to generated functions" genci.sig genci.rt
     return nothing
 end
@@ -55,18 +55,28 @@ struct CuCallInfo <: CallInfo
 end
 get_mi(gci::CuCallInfo) = get_mi(gci.cumi)
 
+# ZygoteNG callsite
+struct PullbackCallInfo <: CallInfo
+    mi::MICallInfo
+end
+get_mi(pci::PullbackCallInfo) = get_mi(pci.mi)
+
 struct Callsite
     id::Int # ssa-id
     info::CallInfo
 end
 get_mi(c::Callsite) = get_mi(c.info)
 
+get_cursor(cursor, cs::Callsite) = get_cursor(cursor, cs.info)
+get_cursor(mi::MethodInstance, ci::CallInfo) = get_mi(ci)
+
 # Callsite printing
-mutable struct TextWidthLimiter
+mutable struct TextWidthLimiter <: IO
     io::IO
     width::Int
     limit::Int
 end
+TextWidthLimiter(io::TextWidthLimiter, limit) = TextWidthLimiter(io.io, 0, min(io.limit, limit))
 TextWidthLimiter(io::IO, limit) = TextWidthLimiter(io, 0, limit)
 has_space(limiter::TextWidthLimiter, width::Int) = limiter.width + width < limiter.limit - 1
 has_space(limiter::TextWidthLimiter, s) = has_space(limiter, textwidth(string(s)))
@@ -81,13 +91,13 @@ function Base.print(io::TextWidthLimiter, s::String)
         for c in graphemes(s)
             cwidth = textwidth(c)
             if has_space(io, cwidth)
-                print(io, c)
+                print(io.io, c)
                 io.width += cwidth
             else
                 break
             end
         end
-        print(io, '…')
+        print(io.io, '…')
         io.width += 1
     end
 end
@@ -156,32 +166,44 @@ function show_callinfo(limiter, ci::Union{MultiCallInfo, FailedCallInfo, Generat
     __show_limited(limiter, name, tt, rt)
 end
 
+function Base.show(io::IO, ci::MICallInfo)
+    print(io, " = invoke ")
+    show_callinfo(io, ci)
+end
+
+function Base.show(io::IO, ci::Union{MultiCallInfo, FailedCallInfo, GeneratedCallInfo})
+    print(io, " = call ")
+    show_callinfo(io, ci)
+end
+
+function Base.show(io::IO, ci::TaskCallInfo)
+    print(io, " = task < ")
+    show_callinfo(io, ci.ci)
+    print(io, " >")
+end
+
+function Base.show(io::IO, ci::ReturnTypeCallInfo)
+    print(io, " = return_type < ")
+    show_callinfo(io, ci.called_mi)
+    print(io, " >")
+end
+
+function Base.show(io::IO, ci::CuCallInfo)
+    print(io, " = cucall < ")
+    show_callinfo(io, ci.cumi)
+    print(io, " >")
+end
+
+function Base.show(io::IO, ci::PullbackCallInfo)
+    print(io, "= pullback < ")
+    show_callinfo(io, ci.mi)
+    print(io, " >")
+end
+
 function Base.show(io::IO, c::Callsite)
     limit = get(io, :limit, false)
     cols = limit ? displaysize(io)[2] : typemax(Int)
     limiter = TextWidthLimiter(io, cols)
     print(limiter, string("%", c.id, " "))
-    if isa(c.info, MICallInfo)
-        print(limiter, " = invoke ")
-        show_callinfo(limiter, c.info)
-    elseif c.info isa MultiCallInfo
-        print(limiter, " = call ")
-        show_callinfo(limiter, c.info)
-    elseif c.info isa FailedCallInfo ||
-           c.info isa GeneratedCallInfo
-        print(limiter, " = call ")
-        show_callinfo(limiter, c.info)
-    elseif c.info isa TaskCallInfo
-        print(limiter, " = task < ")
-        show_callinfo(limiter, c.info.ci)
-        print(limiter, " >")
-    elseif isa(c.info, ReturnTypeCallInfo)
-        print(limiter, " = return_type < ")
-        show_callinfo(limiter, c.info.called_mi)
-        print(limiter, " >")
-    elseif isa(c.info, CuCallInfo)
-        print(limiter, " = cucall < ")
-        show_callinfo(limiter, c.info.cumi)
-        print(limiter, " >")
-    end
+    show(limiter, c.info)
 end

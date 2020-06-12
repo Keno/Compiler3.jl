@@ -8,14 +8,22 @@ module Compiler3
         get_inference_cache, InferenceResult, _methods_by_ftype, OptimizationState,
         CodeInstance, Const, widenconst, isconstType
 
+    export StaticSubGraph
+
     include("extracting_interpreter.jl")
 
-    struct StaticSubGraph
+    abstract type FunctionGraph; end
+
+    struct StaticSubGraph <: FunctionGraph
         code::Dict{MethodInstance, Any}
         instances::Vector{MethodInstance}
         entry::MethodInstance
     end
+    entrypoint(fg::StaticSubGraph) = fg.entry
 
+    mi_at_cursor(mi::MethodInstance) = mi
+
+    has_codeinfo(ssg::StaticSubGraph, mi::MethodInstance) = haskey(ssg.code, mi)
     function get_codeinfo(ssg::StaticSubGraph, mi::MethodInstance)
         code = ssg.code[mi]
         ci = code.inferred

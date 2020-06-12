@@ -136,21 +136,21 @@ Shortcut for [`descend_code_typed`](@ref).
 """
 const descend = descend_code_typed
 
-using Compiler3: ExtractingInterpreter, infer_function, StaticSubGraph, get_codeinfo, find_msgs
+using Compiler3: ExtractingInterpreter, infer_function, StaticSubGraph,
+    get_codeinfo, find_msgs, entrypoint, FunctionGraph, mi_at_cursor
 
 ##
 # _descend is the main driver function.
 # src/reflection.jl has the tools to discover methods
 # src/ui.jl provides the user facing interface to which _descend responds
 ##
-function _descend(ei::ExtractingInterpreter, mi::MethodInstance; iswarn::Bool, params=current_params(), optimize::Bool=true, interruptexc::Bool=true, kwargs...)
+function _descend(fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params=current_params(), optimize::Bool=true, interruptexc::Bool=true, kwargs...)
     debuginfo = true
     if :debuginfo in keys(kwargs)
         selected = kwargs[:debuginfo]
         # TODO: respect default
         debuginfo = selected == :source
     end
-    ssg = StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
     display_CI = true
     while true
         debuginfo_key = debuginfo ? :source : :none
@@ -158,14 +158,15 @@ function _descend(ei::ExtractingInterpreter, mi::MethodInstance; iswarn::Bool, p
         #(CI, rt, slottypes) = do_typeinf_slottypes(mi, optimize, params)
         #preprocess_ci!(CI, mi, optimize, CONFIG)
 
-        CI = get_codeinfo(ssg, mi)
+        CI = get_codeinfo(fg, cursor)
+        mi = mi_at_cursor(cursor)
         slottypes = CI.slottypes
         rt = CI.rettype
-        callsites = find_callsites(CI, mi, slottypes; params=params, kwargs...)
+        callsites = find_callsites(CI, fg, cursor, slottypes; params=params, kwargs...)
 
         if display_CI
             if !optimize
-                msgs = find_msgs(ei, mi)
+                msgs = find_msgs(fg, cursor)
             else
                 msgs = Any[]
             end
@@ -209,12 +210,12 @@ function _descend(ei::ExtractingInterpreter, mi::MethodInstance; iswarn::Bool, p
             end
 
             # recurse
-            next_mi = get_mi(callsite)
-            if next_mi === nothing
+            next_cursor = get_cursor(cursor, callsite)
+            if next_cursor === nothing
                 continue
             end
 
-            _descend(ei, next_mi; params=params, optimize=optimize,
+            _descend(fg, next_cursor; params=params, optimize=optimize,
                      iswarn=iswarn, debuginfo=debuginfo_key, kwargs...)
 
         elseif toggle === :warn
