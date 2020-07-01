@@ -44,11 +44,8 @@ end
 entrypoint(graph::ADGraph) = ADCursor(0, graph.entry_mi)
 Compiler3.has_codeinfo(graph::ADGraph, cursor::ADCursor) =
     lastindex(graph.code) >= cursor.level && haskey(graph.code[cursor.level], cursor.mi)
-function Compiler3.get_codeinfo(graph::ADGraph, cursor::ADCursor)
-    code = graph.code[cursor.level][cursor.mi]
-    ci = code.inferred
-    isa(ci, Vector{UInt8}) && (ci = Core.Compiler._uncompressed_ir(code, ci))
-    ci
+function Compiler3.get_codeinstance(graph::ADGraph, cursor::ADCursor)
+    return graph.code[cursor.level][cursor.mi]
 end
 
 struct RRuleCallInfo <: Cthulhu.CallInfo
@@ -235,6 +232,6 @@ Core.Compiler.may_optimize(ei::ADInterpreter) = false
 Core.Compiler.may_compress(ei::ADInterpreter) = false
 Core.Compiler.may_discard_trees(ei::ADInterpreter) = false
 
-function Core.Compiler.mark_dynamic!(ei::ADInterpreter, sv::InferenceState, msg)
+function Core.Compiler.add_remark!(ei::ADInterpreter, sv::InferenceState, msg)
     push!(ei.msgs, (ei.current_level, sv.linfo, sv.currpc, msg))
 end
