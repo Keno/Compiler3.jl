@@ -24,15 +24,31 @@ module Compiler3
     mi_at_cursor(mi::MethodInstance) = mi
 
     has_codeinfo(ssg::StaticSubGraph, mi::MethodInstance) = haskey(ssg.code, mi)
-    function get_codeinfo(ssg::StaticSubGraph, mi::MethodInstance)
-        code = ssg.code[mi]
+
+    function get_codeinstance(ssg::StaticSubGraph, mi::MethodInstance)
+        return ssg.code[mi]
+    end
+
+    function get_codeinfo(code::CodeInstance)
         ci = code.inferred
         isa(ci, Vector{UInt8}) && (ci = Core.Compiler._uncompressed_ir(code, ci))
         ci
     end
 
-    function analyze(types::Type{<:Tuple})
-        ei = ExtractingInterpreter()
+    function get_codeinfo(graph, cursor)
+        get_codeinfo(get_codeinstance(graph, cursor))
+    end
+
+    function jit_compile(graph, cursor, params=Base.CodegenParams())
+        instance = get_codeinstance(graph, cursor)
+        info = get_codeinfo(instance)
+        params = Ref{Base.CodegenParams}(params)
+        ccall(:jl_compile_codeinst, Ptr{Cvoid}, (Any, Any, Csize_t, Ptr{Base.CodegenParams}),
+            instance, info, Base.get_world_counter(), params)
+    end
+
+    function analyze(types::Type{<:Tuple}; optimize=false)
+        ei = ExtractingInterpreter(;optimize=optimize)
         mi, result = infer_function(ei, types)
         ei, StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
     end

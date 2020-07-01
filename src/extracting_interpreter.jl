@@ -29,12 +29,14 @@ struct ExtractingInterpreter <: Core.Compiler.AbstractInterpreter
     code::Dict{MethodInstance, CodeInstance}
     native_interpreter::NativeInterpreter
     msgs::Vector{Tuple{MethodInstance, Int, String}}
+    optimize::Bool
 end
 
-ExtractingInterpreter() = ExtractingInterpreter(
+ExtractingInterpreter(;optimize=false) = ExtractingInterpreter(
     Dict{MethodInstance, Any}(),
     NativeInterpreter(),
-    Vector{Tuple{MethodInstance, Int, String}}()
+    Vector{Tuple{MethodInstance, Int, String}}(),
+    optimize
 )
 
 import Core.Compiler: InferenceParams, OptimizationParams, get_world_counter,
@@ -56,10 +58,10 @@ Core.Compiler.haskey(a::Dict, b) = Base.haskey(a, b)
 Core.Compiler.haskey(a::WorldView{<:Dict}, b) =
     Core.Compiler.haskey(a.cache, b)
 Core.Compiler.setindex!(a::Dict, b, c) = setindex!(a, b, c)
-Core.Compiler.may_optimize(ei::ExtractingInterpreter) = false
+Core.Compiler.may_optimize(ei::ExtractingInterpreter) = ei.optimize
 Core.Compiler.may_compress(ei::ExtractingInterpreter) = false
 Core.Compiler.may_discard_trees(ei::ExtractingInterpreter) = false
 
-function Core.Compiler.mark_dynamic!(ei::ExtractingInterpreter, sv::InferenceState, msg)
+function Core.Compiler.add_remark!(ei::ExtractingInterpreter, sv::InferenceState, msg)
     push!(ei.msgs, (sv.linfo, sv.currpc, msg))
 end
