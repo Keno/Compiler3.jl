@@ -137,7 +137,7 @@ using Core.Compiler: Const, isconstType, argtypes_to_type, tuple_tfunc, Const,
     getfield_tfunc, _methods_by_ftype, VarTable
 import Core.Compiler: abstract_call_gf_by_type, abstract_call, widenconst
 widenconst(ap::AbstractPullback) = Pullback
-function abstract_call_gf_by_type(interp::ADInterpreter, @nospecialize(f), argtypes::Vector{Any}, @nospecialize(atype), sv::InferenceState, max_methods = InferenceParams(interp).MAX_METHODS)
+function abstract_call_gf_by_type(interp::ADInterpreter, @nospecialize(f), argtypes::Vector{Any}, @nospecialize(atype), sv::InferenceState, max_methods::Int = InferenceParams(interp).MAX_METHODS)
     # Check if this is `pullback`
     @show f
     if f === pullback
@@ -175,7 +175,7 @@ function abstract_call_gf_by_type(interp::ADInterpreter, @nospecialize(f), argty
         end
     end
     invoke(abstract_call_gf_by_type,
-        Tuple{AbstractInterpreter, Any, Vector{Any}, Any, InferenceState, Any},
+        Tuple{AbstractInterpreter, Any, Vector{Any}, Any, InferenceState, Int64},
         interp, f, argtypes, atype, sv, max_methods)
 end
 
@@ -205,11 +205,11 @@ function abstract_call_pullback(pullback::AbstractPullback, pullback_args::Vecto
 end
 
 function abstract_call(interp::ADInterpreter, fargs::Union{Nothing,Vector{Any}}, argtypes::Vector{Any},
-        vtypes::VarTable, sv::InferenceState, max_methods = InferenceParams(interp).MAX_METHODS)
+        vtypes::VarTable, sv::InferenceState, max_methods::Int = InferenceParams(interp).MAX_METHODS)
     if isa(argtypes[1], AbstractPullback)
         return abstract_call_pullback(argtypes[1], argtypes, sv)
     end
-    invoke(abstract_call, Tuple{AbstractInterpreter, Union{Nothing, Vector{Any}}, Vector{Any}, VarTable, InferenceState, Any},
+    invoke(abstract_call, Tuple{AbstractInterpreter, Union{Nothing, Vector{Any}}, Vector{Any}, VarTable, InferenceState, Int64},
         interp, fargs, argtypes, vtypes, sv, max_methods)
 end
 
