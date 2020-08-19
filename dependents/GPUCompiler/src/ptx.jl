@@ -14,11 +14,13 @@ Base.@kwdef struct PTXCompilerTarget <: AbstractCompilerTarget
     maxregs::Union{Nothing,Int} = nothing
 end
 
+source_code(::PTXCompilerTarget) = "ptx"
+
 llvm_triple(::PTXCompilerTarget) = Int===Int64 ? "nvptx64-nvidia-cuda" : "nvptx-nvidia-cuda"
 
 function llvm_machine(target::PTXCompilerTarget)
     triple = llvm_triple(target)
-    t = Target(triple)
+    t = Target(triple=triple)
 
     cpu = "sm_$(target.cap.major)$(target.cap.minor)"
     feat = "+ptx60" # we only support CUDA 9.0+ and LLVM 6.0+

@@ -128,7 +128,7 @@ Core.Compiler.OptimizationParams(ni::GPUInterpreter) = ni.opt_params
 Core.Compiler.may_optimize(ni::GPUInterpreter) = true
 Core.Compiler.may_compress(ni::GPUInterpreter) = true
 Core.Compiler.may_discard_trees(ni::GPUInterpreter) = true
-Core.Compiler.add_remark!(ni::GPUInterpreter, sv::InferenceState, msg) = nothing
+Core.Compiler.add_remark!(ni::GPUInterpreter, sv::InferenceState, msg) = nothing # TODO
 
 ### world view of the cache
 
@@ -141,7 +141,7 @@ end
 function Core.Compiler.get(wvc::WorldView{GPUCodeCache}, mi::MethodInstance, default)
     cache = wvc.cache
     for ci in get!(cache.dict, mi, CodeInstance[])
-        if ci.min_world <= wvc.min_world && wvc.max_world <= ci.max_world
+        if ci.min_world <= wvc.worlds.min_world && wvc.worlds.max_world <= ci.max_world
             # TODO: if (code && (code == jl_nothing || jl_ir_flag_inferred((jl_array_t*)code)))
             return ci
         end
@@ -149,9 +149,6 @@ function Core.Compiler.get(wvc::WorldView{GPUCodeCache}, mi::MethodInstance, def
 
     return default
 end
-
-Core.Compiler.WorldView(wvc::WorldView{GPUCodeCache}, min_world::UInt, max_world::UInt) =
-    WorldView(wvc.cache, min_world, max_world)
 
 function Core.Compiler.getindex(wvc::WorldView{GPUCodeCache}, mi::MethodInstance)
     r = Core.Compiler.get(wvc, mi, nothing)
@@ -192,6 +189,10 @@ end
 ### external interface
 
 function compile_method_instance(job::CompilerJob, method_instance::Core.MethodInstance, world)
+    # set-up the compiler interface
+    tracer = MethodCompileTracer(job, method_instance)
+    hook_emit_function(method_instance, code) = push!(tracer, method_instance)
+    hook_emitted_function(method_instance, code) = pop!(tracer, method_instance)
     debug_info_kind = if Base.JLOptions().debug_level == 0
         LLVM.API.LLVMDebugEmissionKindNoDebug
     elseif Base.JLOptions().debug_level == 1
@@ -199,17 +200,12 @@ function compile_method_instance(job::CompilerJob, method_instance::Core.MethodI
     elseif Base.JLOptions().debug_level >= 2
         LLVM.API.LLVMDebugEmissionKindFullDebug
     end
-    # LLVM's debug info crashes older CUDA assemblers
     if job.target isa PTXCompilerTarget # && driver_version(job.target) < v"10.2"
+        # LLVM's debug info crashes older CUDA assemblers
         # FIXME: this was supposed to be fixed on 10.2
         @debug "Incompatibility detected between CUDA and LLVM 8.0+; disabling debug info emission" maxlog=1
         debug_info_kind = LLVM.API.LLVMDebugEmissionKindNoDebug
     end
-
-    # set-up the compiler interface
-    tracer = MethodCompileTracer(job, method_instance)
-    hook_emit_function(method_instance, code) = push!(tracer, method_instance)
-    hook_emitted_function(method_instance, code) = pop!(tracer, method_instance)
     params = Base.CodegenParams(;
                     track_allocations  = false,
                     code_coverage      = false,
@@ -272,6 +268,18 @@ function irgen(job::CompilerJob, method_instance::Core.MethodInstance, world)
             # only occurs in debug builds
             delete!(function_attributes(llvmf), EnumAttribute("sspstrong", 0, JuliaContext()))
 
+            if VERSION < v"1.5.0-DEV.393"
+                # make function names safe for ptxas
+                llvmfn = LLVM.name(llvmf)
+                if !isdeclaration(llvmf)
+                    llvmfn′ = safe_name(llvmfn)
+                    if llvmfn != llvmfn′
+                        LLVM.name!(llvmf, llvmfn′)
+                        llvmfn = llvmfn′
+                    end
+                end
+            end
+
             if Sys.iswindows()
                 personality!(llvmf, nothing)
             end
@@ -288,14 +296,24 @@ function irgen(job::CompilerJob, method_instance::Core.MethodInstance, world)
     # target-specific processing
     process_module!(job, mod)
 
+    # sanitize function names
+    # FIXME: Julia should do this, but apparently fails (see maleadt/LLVM.jl#201)
+    for f in functions(mod)
+        LLVM.isintrinsic(f) && continue
+        llvmfn = LLVM.name(f)
+        startswith(llvmfn, "julia.") && continue # Julia intrinsics
+        startswith(llvmfn, "llvm.") && continue # unofficial LLVM intrinsics
+        llvmfn′ = safe_name(llvmfn)
+        if llvmfn != llvmfn′
+            @assert !haskey(functions(mod), llvmfn′)
+            LLVM.name!(f, llvmfn′)
+        end
+    end
+
     # rename the entry point
     if job.source.name !== nothing
-        llvmfn = safe_name(string("julia_", job.source.name))
-    else
-        # strip the globalUnique counter
-        llvmfn = LLVM.name(entry)
+        LLVM.name!(entry, safe_name(string("julia_", job.source.name)))
     end
-    LLVM.name!(entry, llvmfn)
 
     # promote entry-points to kernels and mangle its name
     if job.source.kernel
@@ -339,17 +357,28 @@ end
 # we generate function names that look like C++ functions, because many NVIDIA tools
 # support them, e.g., grouping different instantiations of the same kernel together.
 
-function mangle_param(t)
+function mangle_param(t, substitutions)
     t == Nothing && return "v"
 
     if isa(t, DataType) || isa(t, Core.Function)
         tn = safe_name(t)
-        str = "$(length(tn))$tn"
 
+        # handle substitutions
+        sub = findfirst(isequal(tn), substitutions)
+        if sub === nothing
+            str = "$(length(tn))$tn"
+            push!(substitutions, tn)
+        elseif sub == 1
+            str = "S_"
+        else
+            str = "S$(sub-2)_"
+        end
+
+        # encode typevars as template parameters
         if !isempty(t.parameters)
             str *= "I"
             for t in t.parameters
-                str *= mangle_param(t)
+                str *= mangle_param(t, substitutions)
             end
             str *= "E"
         end
@@ -367,8 +396,9 @@ function mangle_call(f, tt)
     fn = safe_name(f)
     str = "_Z$(length(fn))$fn"
 
+    substitutions = String[]
     for t in tt.parameters
-        str *= mangle_param(t)
+        str *= mangle_param(t, substitutions)
     end
 
     return str
@@ -395,7 +425,8 @@ function lower_throw!(mod::LLVM.Module)
     changed = false
     @timeit_debug to "lower throw" begin
 
-    throw_functions = Dict{String,String}(
+    throw_functions = [
+        # unsupported runtime functions that are used to throw specific exceptions
         "jl_throw"                      => "exception",
         "jl_error"                      => "error",
         "jl_too_few_args"               => "too few arguments exception",
@@ -409,12 +440,16 @@ function lower_throw!(mod::LLVM.Module)
         "jl_bounds_error_tuple_int"     => "bounds error",
         "jl_bounds_error_unboxed_int"   => "bounds error",
         "jl_bounds_error_ints"          => "bounds error",
-        "jl_eof_error"                  => "EOF error"
-    )
+        "jl_eof_error"                  => "EOF error",
+        # Julia-level exceptions that use unsupported inputs like interpolated strings
+        r"julia_throw_exp_domainerror_\d+"      => "DomainError",
+        r"julia_throw_complex_domainerror_\d+"  => "DomainError"
+    ]
 
-    for (fn, name) in throw_functions
-        if haskey(functions(mod), fn)
-            f = functions(mod)[fn]
+    for f in functions(mod)
+        fn = LLVM.name(f)
+        for (throw_fn, name) in throw_functions
+            occursin(throw_fn, fn) || continue
 
             for use in uses(f)
                 call = user(use)::LLVM.CallInst
@@ -448,6 +483,7 @@ function lower_throw!(mod::LLVM.Module)
             end
 
             @compiler_assert isempty(uses(f)) job
+            break
          end
      end
 
@@ -520,7 +556,7 @@ function promote_kernel!(job::CompilerJob, mod::LLVM.Module, kernel::LLVM.Functi
     @compiler_assert length(kernel_types) == length(parameters(kernel_ft)) job
     for (i, (param_ft,arg_typ)) in enumerate(zip(parameters(kernel_ft), kernel_types))
         if param_ft isa LLVM.PointerType && issized(eltype(param_ft)) &&
-           !(arg_typ <: Ptr) && !(VERSION >= v"1.5" && arg_typ <: Core.LLVMPtr)
+           !(arg_typ <: Ptr) && !(VERSION >= v"1.5-" && arg_typ <: Core.LLVMPtr)
             push!(parameter_attributes(kernel, i), EnumAttribute("byval"))
         end
     end
