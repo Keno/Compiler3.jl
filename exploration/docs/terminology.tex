@@ -1,0 +1,1038 @@
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf}  % Comment this line out
+                                                          % if you need a4paper
+%\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4
+                                                          % paper
+
+\IEEEoverridecommandlockouts                              % This command is only
+                                                          % needed if you want to
+                                                          % use the \thanks command
+\overrideIEEEmargins
+% See the \addtolength command later in the file to balance the column lengths
+% on the last page of the document
+
+
+
+% The following packages can be found on http:\\www.ctan.org
+%\usepackage{graphics} % for pdf, bitmapped graphics files
+%\usepackage{epsfig} % for postscript graphics files
+%\usepackage{mathptmx} % assumes new font selection scheme installed
+%\usepackage{times} % assumes new font selection scheme installed
+%\usepackage{amsmath} % assumes amsmath package installed
+%\usepackage{amssymb}  % assumes amsmath package installed
+
+\usepackage[prependcaption,textsize=tiny]{todonotes}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{minted}
+\usepackage{cite}
+\usepackage[utf8]{inputenc}
+\usepackage[gen]{eurosym}
+
+
+\usepackage{tikz-cd}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+\usetikzlibrary{cd}
+\usetikzlibrary{arrows}
+\usetikzlibrary{calc}
+\usetikzlibrary{decorations.markings}
+\tikzset{ed/.style={auto,inner sep=2pt,font=\scriptsize}} %edges
+\tikzset{>=stealth'}
+\tikzset{vert/.style={draw,circle, minimum size=6mm, inner sep=0pt, fill=white}}
+\tikzset{vertbig/.style={draw,circle, minimum size=8mm, inner sep=0pt, fill=white}}
+\tikzset{->-/.style={decoration={
+      markings,
+      mark=at position #1 with {\arrow{>}}},postaction={decorate}}}
+
+\newtheorem{definition}{Definition}[paragraph]
+\newcommand{\Optic}{\textbf{Optic}}
+\newcommand{\hto}{\ensuremath{\,\mathaccent\shortmid\rightarrow\,}}
+\newcommand{\id}{\text{id}}
+\newcommand{\R}{\mathbb{R}}
+\DeclareSymbolFont{bbsymbol}{U}{bbold}{m}{n}
+\DeclareMathSymbol{\bbsemi}{\mathbin}{bbsymbol}{"3B}
+
+\DeclareUnicodeCharacter{2032}{\ensuremath{^\prime}}
+\DeclareUnicodeCharacter{2081}{\ensuremath{_1}}
+\DeclareUnicodeCharacter{2082}{\ensuremath{_2}}
+\DeclareUnicodeCharacter{2A1F}{\ensuremath{\bbsemi}}
+
+\title{\LARGE \bf
+$\partial P$.jl\footnote{Working name} terminology and notation guide}
+
+\author{Keno Fischer}
+
+\begin{document}
+
+\maketitle
+
+\section*{Foreword}
+
+The field of automatic differentiation (AD) has a long history, both in the academic
+literature and in programming practice. However, despite this long history,
+or perhaps because of it, the terminology for various concepts and operations
+is neither standard nor consistent. This inconsistency imposes upon new
+implementers of AD tools a burden to clearly state the
+meaning of any terminology they might venture to employ. This document is an
+attempt to do such that for my present work on a new AD
+tool for the Julia language. It is intended 1) to give contributors and users a
+common vocabulary to discuss the manifold abstractions required to create a
+modern AD tools, 2) to explain why certain terminology may have been
+chosen and 3) to serve implementers as a guide to the proper functioning of the
+tool when lost deep in the web of details. By necessity, the terminology in
+this guide is borrowed from several different fields of study (most relevantly
+category theory and differential geometry). Nevertheless, this guide does not
+intend to be an introduction to these fields, nor does it assume that readers
+have had such an introduction. Instead, we try to give some examples and
+intuition for why the abstractions chosen are of interest to the implementation
+of automatic differentiation. Lastly, despite using terminology that might
+be amenable to formalization, this document is not an attempt to do so and as
+such certain liberties may be taken that would require careful treatment in a
+more formal treatise. With that out of the way, let's begin:
+
+\section{Optical Constructions}
+
+To begin our quest, we shall first put aside the topic of differentiation
+entirely and study a relatively recent construction from category theory known
+as an \textit{optic}. The power of the optic construction
+lies in its ability to combine both a covariant and a contravariant
+transformation in one abstraction while retaining composability.
+Following Riley~\cite{riley:optics}, we briefly consider the following
+explicit description of an optic (those not familiar with the language
+of category theory are encouraged to skip straight to the diagrams).
+
+\begin{definition}
+For some symmetric monoidal category $\mathcal{C}$, we define the category
+$\Optic_{\mathcal{C}}$. Whose objects are pairs $(A, A')$ of objects in $\mathcal{C}$
+and whose morphisms have representatives given by $\langle l | r \rangle: (A, A') \hto (B, B')$
+are pairs $(l, r)$ where $l: A \to M \otimes B$, $r: M \otimes B' \to A'$ (the choice of the object $M$ depending
+on the representative - see Riley for details).
+\end{definition}
+
+This definition makes maniffest the combination of co- and contravariant data.
+For a representative $\langle l | r \rangle$, $l$ varies covariantly while $r$
+varies contravariantly. We additionally have a "memory" or "residual" object $M$.
+This object is not uniquely determined and in fact we shall make good use of that
+fact in our actual use case later. For now, We briefly exhibit the composition rules for these
+morphisms. Suppose $\langle l_1 | r_1 \rangle: (A, A') \hto (B, B')$,
+$\langle l_2 | r_2 \rangle: (B, B') \hto (C, C')$. Then
+the sequenial composition $\langle l_{12} | r_{12} \rangle = \langle l_1 | r_1 \rangle \bbsemi \langle l_2 | r_2 \rangle$
+may be written explicitly as
+
+\[
+l_{12}(a) := (x_1 \otimes y_1, y_2) \text { where } x = l_1(a), y = l_2(x_2) \]\[
+r_{12}(m_1 \otimes m_2, c) := r_1(m_1, r_2(m_2, c'))
+\]
+
+While these definitions are perfectly explicit, it might be easier to understand
+what is going on by considering optics diagramatically (diagrams taken from Riley\cite{riley:optics}).
+For $\langle l | r \rangle$ we draw:
+
+\begin{center}
+\begin{tikzpicture}
+    \node[vert] (l) at (0, 0) {$l$};
+    \node[vert] (r) at (4, 0) {$r$};
+
+    \node (S) [left of=l] {$A$};
+    \node (A) [below right = 0.7 and 1 of l] {$B$};
+    \node (S') [right of=r] {$A'$};
+    \node (A') [below left = 0.7 and 1 of r] {$B'$};
+
+    \draw[->] (S) -- (l);
+    \draw[->] (l) to[out=south east,in=west] (A);
+
+    \draw[<-] (S') -- (r);
+    \draw[<-] (r) to[out=south west,in=east] (A');
+
+    \draw[->] (l) to[out=north east, in=west] ++(1,1)
+     to ++(2,0)
+     to[out=east, in=north west] (r)
+    ;
+
+    \node[draw,dashed,fit=(A) (A'), inner xsep = 8pt] (box) {};
+    \draw[dashed] (box.90) -- +(0,2.25);
+\end{tikzpicture}
+\end{center}
+
+We compose these optics by inserting one optic in the hole of another, e.g.
+for the composition we have above, we might write
+$\langle l_1 | r_1 \rangle \bbsemi \langle l_2 | r_2 \rangle$
+
+\begin{center}
+    \begin{tikzpicture}
+        \begin{scope}[on grid]
+
+        \node[vert] (l') at (0, 0) {$l_1$};
+        \node[vert, below right = 0.7 and 1 of l'] (l) {$l_2$};
+        \node[vert] (r') at (5, 0) {$r_1$};
+        \node[vert, below left = 0.7 and 1 of r'] (r) {$r_2$};
+
+        \node (A) [below right = 0.7 and 1 of l] {$C$};
+        \node (A') [below left = 0.7 and 1 of r] {$C'$};
+
+        \node (R) [left of=l'] {$A$};
+        \node (R') [right of=r'] {$A'$};
+
+        \draw[->] (R) -- (l');
+        \draw[<-] (R') -- (r');
+
+        \draw[->] (l') to[out=north east, in=west] ++(1,1)
+         to ++(3,0)
+         to[out=east, in=north west] (r')
+        ;
+
+        \draw[->] (l) to[out=north east, in=west] ++(1,1)
+         to ++(1,0)
+         to[out=east, in=north west] (r)
+        ;
+
+        \draw[->] (l') to[out=south east,in=west] (l);
+        \draw[->] (r) to[out=east, in=south west] (r');
+
+        \draw[->] (l) to[out=south east,in=west] (A);
+        \draw[<-] (r) to[out=south west,in=east] (A');
+
+        \node[draw,dashed,fit=(l) (r), inner xsep = 6pt, inner ysep = 25pt] (box2) {};
+        \node[draw,dashed,fit=(A) (A'), inner xsep = 8pt] (box) {};
+        \end{scope}
+        \end{tikzpicture}
+\end{center}
+
+From the diagrammatic view, it is immediately clear that this composition
+is indeed another optic and what the composition rule for these optics should
+be:
+
+\begin{center}
+    \begin{tikzpicture}
+        \begin{scope}[on grid]
+
+        \node[vert] (l_1) at (0, 0) {};
+        \node[vert, below right = 0.7 and 1 of l'] (l_2) {};
+        \node[vert] (r_1) at (5, 0) {};
+        \node[vert, below left = 0.7 and 1 of r'] (r_2) {};
+
+        \node (C) [below right = 0.7 and 1 of l] {$C$};
+        \node (C') [below left = 0.7 and 1 of r] {$C'$};
+
+        \node (R) [left of=l'] {$A$};
+        \node (R') [right of=r'] {$A'$};
+
+        \draw[->] (R) -- (l');
+        \draw[<-] (R') -- (r');
+
+        \draw[->] (l') to[out=north east, in=west] ++(1,1)
+         to ++(3,0)
+         to[out=east, in=north west] (r')
+        ;
+
+        \draw[->] (l) to[out=north east, in=west] ++(1,1)
+         to ++(1,0)
+         to[out=east, in=north west] (r)
+        ;
+
+        \draw[->] (l') to[out=south east,in=west] (l);
+        \draw[->] (r) to[out=east, in=south west] (r');
+
+        \draw[->] (l) to[out=south east,in=west] (A);
+        \draw[<-] (r) to[out=south west,in=east] (A');
+
+        \node[circle,draw,dashed,fit=(l_1) (l_2), inner sep = 1pt, label=110:$l_{12}$] (l_12) {};
+        \node[circle,draw,dashed,fit=(r_1) (r_2), inner sep = 1pt, label=80:$r_{12}$] (r_12) {};
+        \node[draw,dashed,fit=(C) (C'), inner xsep = 8pt] (box) {};
+        \end{scope}
+        \end{tikzpicture}
+\end{center}
+
+The reader is encouraged to verify that this diagrammatic derivation of $l_{12}$
+and $r_{12}$ matches the algebraic definition above.
+
+\subsection{Encoding Optics in Julia}
+
+One of the original applications of optic constructions is the manipulation
+of deeply nested data structures, so let's take that example and consider how
+we might represent it in Julia. Optics for this application are often called
+\textit{lenses}, though since we are just using them an an example here we shall
+not concern ourselves with a precise definition. We begin by defining an
+abstract optic type as well as a concrete representation of morphisms as pairs
+$\langle l | r \rangle$:
+
+\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}{opticdef.jl}
+
+Given these definitions, we can now define an optic constructor that allows us
+to modify an immutable value at a given location:
+
+\begin{minted}[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}
+SetIndex(idx) = OpticRepr(
+    obj->(obj, getindex(obj, idx)),
+    (obj, update)->setindex(obj, update, idx)
+)
+\end{minted}
+
+which we may use like so:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> tup = (1,(2,3))
+julia> o = SetIndex(2) ⨟ SetIndex(1)
+julia> m, c = left(o, tup)
+julia> c
+2
+julia> right(o, m, c + 100)
+(1, (102, 3))
+\end{minted}
+
+However, as written, this definition as a big problem: It gives us the state `m`
+explicitly. The type and value of `m` depends on the representative of the optic,
+but nothing in our above definition requires the state `m` to be matched to the
+optic representative `o`. To see the representation problem explicitly, suppose
+we noticed that the state in this representation is somewhat suboptimal:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> m
+((1, (2, 3)), (2, 3))
+\end{minted}
+
+and instead defined a more optimized representation of the same optic:
+
+\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}{fastsetindex.jl}
+
+Our example from above goes through just the same:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> tup = (1,(2,3))
+julia> of = FastSetIndex(2) ⨟ FastSetIndex(1)
+julia> m, c = left(of, tup)
+julia> c
+2
+julia> right(of, m, c + 100)
+(1, (102, 3))
+\end{minted}
+
+but our state is much smaller:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> m
+(1, (2, 3))
+\end{minted}
+
+With these two different representatives for the same optic, the
+representative, dependence of `m` becomes quite apparent:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> right(of, m, c + 100)
+(1, (102, 3))
+
+julia> right(o, m, c + 100)
+ERROR: MethodError: no method matching
+setindex(::Int64, ::Tuple{Int64,Int64}, ::Int64)
+\end{minted}
+
+In this example, this might be quite silly, but in general it presents a
+problem depending on how the representative is chosen. E.g. an optic constructor
+might perform a randomized search for the most efficient representative, so two
+calls to the constructor will not necessarily yield the same representative. We
+would thus prefer to have an interface to our optics that either does not
+explicitly expose the state to the user, or if it does, tags the state with
+a particular choice or representative. Here are two (equivalent) interfaces to
+optics that have this property:
+
+\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}{opticcall.jl}
+
+With these definitions, our update operation from above becomes
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> of(tup) do c
+    c + 100
+end
+(1, (102, 3))
+
+julia> c, back = of(tup);
+
+julia> back(c+100)
+(1, (102, 3))
+\end{minted}
+
+The observant reader may at this point remark that written this way, we are
+simply describing a standard design pattern, found frequently in julia libraries
+(indeed so frequently that the \textit{do} syntax was partly introduced to
+support it). For example, the julia standard library includes the \textit{cd} function,
+which modulo error handling function looks like this:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+function cd(f::Function, dir::AbstractString)
+    old = pwd()
+    cd(dir)
+    f()
+    cd(old)
+end
+\end{minted}
+
+While it's not a precise match for the optics encoding as we have defined it
+(and of course is side-effectful which we have not discussed at all).
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+OpticRepr(a->(pwd(), (cd(a[1]); tail(a))),
+          (m, b)->cd(m)))
+\end{minted}
+
+Have we thus wasted the better part of two pages exploring and giving a name to
+a notion that is so natural as to be a standard design pattern? No! The key
+takeaway from this section should be twofold optics: 1) Optics have a
+nice composition property that allows you to take two optics and combine
+them into another optic and 2) Optical constructions are quite natural and
+you are probably already familiar with them.
+
+\section{SSA as a category / Optics over SSA}
+\label{ssair}
+
+In Julia's optimizer, functions are represented by their single static
+assignment (SSA) form. We shall venture to sketch a categorical description
+of SSA form and then investigate the structure of Optic over such a category.
+
+\subsection{Duplication / Deletion of Values}
+
+In our examples, so far every values was used once and exactly once. In SSA
+form, we may have an arbitrary number of uses. To support this, we extend our
+category with the diagonal $\Delta_{SSA}: A \to A \otimes A$) and deletion ($\dashv: A \to I$) morphisms.
+Graphically, we have:
+
+\begin{center}
+    \begin{tikzpicture}[baseline=(A1), on grid]
+        \node[] (A1) at (0, 0) {A};
+        \node[right of=A1] (C) {};
+        \node[below right of=C] (A2) {A};
+        \node[above right of=C] (A3) {A};
+        \draw[->] (A1) -- (C.center) -- (A2);
+        \draw[->] (A1) -- (C.center) -- (A3);
+    \end{tikzpicture}\hspace{2em}
+    \begin{tikzpicture}[baseline=(A1), on grid]
+        \node[] (A1) at (0, 0) {A};
+        \node[circle,right of=A1, fill=black] (T) {};
+        \draw[->] (A1) -- (T);
+    \end{tikzpicture}
+\end{center}
+
+\subsection{Forward control flow}
+
+To account for control flow, we add a coproduct to our category, which we shall
+denote by $\oplus$. Note that this is different from the $\otimes$ operation,
+we have so far considered, and we are thus creating a \textbf{bimonoidal}
+category, with two separate monoidal structures. Graphically, we will
+indicate $\oplus$ by boxes around the operations in questions, so for example,
+for the morphism $(f \oplus g) \otimes h: (A \oplus B) \otimes C \to (A^\prime \oplus B^\prime) \otimes C^\prime$,
+we will draw:
+
+\begin{center}
+    \begin{tikzpicture}[baseline=(A1), on grid]
+        \node[] (A) {A};
+        \node[below of=A] (B) {B};
+        \node[below of=B] (C) {C};
+
+        \node[right of=A] (A') {$A^\prime$};
+        \node[right of=B] (B') {$B^\prime$};
+        \node[right of=C] (C') {$C^\prime$};
+
+        \draw[->] (A) -- (A');
+        \draw[->] (B) -- (B');
+        \draw[->] (C) -- (C');
+
+        \node[draw,dotted,fit=(A) (A') (B) (B'), inner sep = 1pt] (AA) {};
+        \draw[dotted] (AA.west) -- (AA.east) {};
+    \end{tikzpicture}
+\end{center}
+
+Now, we have an operation $\varphi: A \oplus A \to A$, that joins control flow edges:
+
+\begin{center}
+    \begin{tikzpicture}[baseline=(A1), on grid]
+        \node[] (A1) {A};
+        \node[circle, draw, left of=A1] (C) {$\varphi$};
+        \node[below left of=C] (A2) {A};
+        \node[above left of=C] (A3) {A};
+
+        \draw[->] (A2) -- (C) -- (A1);
+        \draw[->] (A3) -- (C) -- (A1);
+        \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
+        \draw[dotted] (AA.west) -- (AA.east) {};
+    \end{tikzpicture}
+\end{center}
+
+and we will introduce an additional "conditonal branch" operation $br: A \otimes C \to A \oplus A$ (where we say $C$
+is the condition):
+
+\begin{center}
+    \begin{tikzpicture}[baseline=(A1), node distance = 3em and auto, on grid]
+        \node[] (A1) at (0, 0) {A};
+        \node[right of=A1, fill=black] (C) {};
+        \node[node distance = 2em, below of=A1] (Cond) {C};
+        \node[below right of=C] (A2) {A};
+        \node[above right of=C] (A3) {A};
+        \draw[->] (A1) -- (C.center) -- (A2);
+        \draw[->] (A1) -- (C.center) -- (A3);
+        \draw[->] (Cond) -| (C);
+        \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
+        \draw[dotted] (AA.west) -- (AA.east) {};
+    \end{tikzpicture}
+\end{center}
+
+We further impose the following \textit{co-predication relation}:
+
+\begin{center}
+    \begin{tikzpicture}[baseline=(Cond), node distance = 3em and auto, on grid]
+        \node[] (A1) at (0, 0) {A};
+        \node[right of=A1, fill=black] (CA) {};
+        \node[node distance = 2em, below of=A1] (Cond) {C};
+        \node[node distance = 2em, below of=Cond] (B1) {B};
+        \node[right of=B1, fill=black] (CB) {};
+        \node[above right=0.3 and 0.8 of CA] (A2) {A};
+        \node[below right=0.3 and 0.8 of CA] (A3) {A};
+        \node[below right=0.3 and 0.8 of CB] (B2) {B};
+        \node[above right=0.3 and 0.8 of CB] (B3) {B};
+        \draw[->] (A1) -- (CA.center) -- (A2);
+        \draw[->] (A1) -- (CA.center) -- (A3);
+        \draw[->] (Cond) -| (CA);
+        \draw[->] (Cond) -| (CB);
+        \draw[->] (B1) -- (CB.center) -- (B2);
+        \draw[->] (B1) -- (CB.center) -- (B3);
+        \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
+        \draw[dotted] (AA.west) -- (AA.east) {};
+        \node[draw,dotted,fit=(B2)(B3), inner sep = 2pt] (BB) {};
+        \draw[dotted] (BB.west) -- (BB.east) {};
+    \end{tikzpicture} \hspace{2em} $\cong$ \hspace{2em}
+    \begin{tikzpicture}[baseline=(A1), node distance = 3em and auto, on grid]
+        \node[] (A1) at (0, 0) {$A\otimes B$};
+        \node[right of=A1, fill=black] (C) {};
+        \node[node distance = 2em, below of=A1] (Cond) {C};
+        \node[below right of=C] (A2) {$A\otimes B$};
+        \node[above right of=C] (A3) {$A\otimes B$};
+        \draw[->] (A1) -- (C.center) -- (A2);
+        \draw[->] (A1) -- (C.center) -- (A3);
+        \draw[->] (Cond) -| (C);
+        \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
+        \draw[dotted] (AA.west) -- (AA.east) {};
+    \end{tikzpicture}
+\end{center}
+
+As a notational convenience, we write $\oplus_c$ for the coproduct introduced
+under some abstract condition $c$. In that case, we may write the co-predication
+condition as
+\[ \leftrightarrow_{\oplus} := (A \oplus_c B) \otimes (C \oplus_c D) \cong (A \otimes C) \oplus_c (B \otimes D) \]
+
+To avoid running into technical difficulties, we further allow commuting arbitrary
+morphisms through the branch operations, such that we can be sure every $A \oplus B$
+is always potentially the direct result of a branch operation, such that we may
+validly introduce abstract condition tags on any such $\oplus$ operation
+\footnote{I realize this is a bit handwavy. While I believe this works fine, I would
+be interested in improvements to make this construction more formal and
+potentially avoid the reliance on commuting morphisms through the branch operation
+so as ot facilitate the future addition of side effects.}.
+
+\subsection{Lifting to the Optic category}
+
+\subsubsection{Product Structure}
+
+Having defined the structure for our bimonoidal category $SSA_{\mathcal{C}}$,
+what can we say about the structure of $\text{Optic}_{SSA_{\mathcal{C}}}$?
+To be explicit, we're still performing the optic construction with respect to
+the $\oplus$ structure of our category. Let us first look at the product itself.
+Do we have a diagonal map in $\text{Optic}_{SSA}$? Perhaps surprisingly, the answer
+is no! To see this, let's consider what we must construct:
+
+We wish to find a map $\text{Optic}(\Delta_{SSA}): (A, A') \to (A, A') \otimes (A, A')$.
+A representative for such a morphism would have the form $\langle l, r \rangle$:
+$l: A \to M \otimes A \otimes A$, $r: M \otimes A^\prime \otimes A^\prime \to A'$.
+Finding $l$ is easy, we can just use $\Delta_{SSA}$ (letting $M=I$) from the underlying category.
+However, there is no good way to construct $r$. A priori, there is no reason
+to expect any morphism of the shape $A' \otimes A' \to A'$ to exist, and even
+if such morphisms do exists, there is no reason to expect them to have the
+required uniqueness properties. It is important to note that this does not
+prevent us from lifting $\Delta_{SSA}$ to $\text{Optic}$ in our applications
+of interest, it simply means that $\otimes$ is not a categorical product in
+$\text{Optic}_{SSA_{\mathcal{C}}}$, so we must make make a choice of summation
+morphism in our lifting functor.
+
+\subsubsection{Coproduct Structure}
+
+Given our utter disappointment with the product structure, can we have any
+hope to lift the co-product structure. Yes, we do! First we construct the
+co-product itself. For two optics $\langle l_1 | r_1 \rangle: (A, A') \to (B, B')$
+with residual $M_1$ and $\langle l_2 | r_2 \rangle: (C, D') \to (D, D')$ with residual $M_2$,
+we construct a new optic $\langle l_{12} | r_{12} \rangle$ where
+
+\[
+l_{12} = (l_1 \oplus l_2) \bbsemi \leftrightarrow_{oplus}
+\]\[
+r_{12} = \leftrightarrow_{oplus}^{-1} \bbsemi (r_1 \oplus r_2)
+\]
+
+Similarly, we can confirm that this is indeed a coproduct by exhibting the $\varphi$
+morphism. The trick here is to use the
+residual to carry the branch history information. Perhaps the simplest
+representative of $\text{Optic}(\varphi): (A \oplus_a A, A' \oplus_a A') \to (A, A')$ would be $\langle l | r \rangle$ where
+\[
+l = \Delta_{SSA} \bbsemi (\text{id}_{A \oplus_a A} \otimes \varphi) \]\[
+r = d \bbsemi (\pi_2 \oplus \pi_2)
+\]
+where $d$ is the distributive map. While this may be a little abstract, hopefully
+it becomes clear as a picture:
+
+\begin{center}
+    \begin{tikzpicture}
+        \node (l) at (0, 0) {};
+
+        \node (S1) [above left=0 and 0.2 of l.center,label=left:A,minimum height=2em] {};
+        \node (S2) [below left=0 and 0.2 of l.center,label=left:A,minimum height=2em] {};
+        \node (C1) [right=0.1 of S1] {};
+        \node (C2) [right=0.1 of S2] {};
+
+        \node (J1) [right=3.5 of C1] {};
+        \node (J2) [right=3.5 of C2] {};
+
+        \draw[->] (C1.center) to[out=east,in=west] ++(0.5,0.0) -- ++(2.5,0) to[out=east,in=west] (J1.north) -> ++(0.5,0) node[fill=black] {};
+        \draw[->] (C2.center) to[out=east,in=west] ++(0.5,0.0) -- ++(2.5,0) to[out=east,in=west] (J2.north) -> ++(0.5,0) node[fill=black] {};
+        \node[vert, below right=1.1 and 0.6 of C2] (phi) at (0, 0) {$\varphi$};
+
+        \draw[->] (S1) -- (C1.center) to[out=south east,in=west] (phi.120);
+        \draw[->] (S2) -- (C2.center) to[out=south east,in=west] (phi.200);
+
+        \node (A) [right =0.4 of phi] {$A$};
+        \node (A') [right =0.1 of A] {$A'$};
+
+        \draw[->] (phi) -- (A);
+
+        \draw[->] (A') to[out=east, in=west] (J1.south) -- ++(1,0) node[label=right:A'] (T1) {};
+        \draw[->] (A') to[out=east, in=west] (J2.south) -- ++(1,0) node[label=right:A'] {};
+
+        \node[draw,dashed,fit=(A) (A'), inner sep = 1pt] (AA) {};
+        \node[draw,dotted,fit=(S1)(S2)(J1)(J2)(T1), inner sep = 1pt] (AA) {};
+        \draw[dotted] (AA.west) -- (AA.east) {};
+
+    \end{tikzpicture}
+\end{center}
+
+Note that another representative of the same optic could simply record the
+active component (e.g. by using the map $(x \to 1) \oplus (y \to 2)$ and
+reintroducing a branch on the RHS).
+
+However, note that (at least the way we chose to set it up) we do not have a
+unique lifting of the branch operator itself.
+
+\section{Optic Functors}
+
+One useful way to construct optics is to do so automatically, from simpler
+descriptions. More formally, we are interested in functors $F: \mathcal{C} \to \Optic_{\mathcal{D}}$.
+The requirement for $F$ to be a functor means that composition in $\mathcal{C}$
+matches composition in $\Optic_{\mathcal{D}}$, i.e. $F(f) \bbsemi F(g) = F(f \bbsemi g)$.
+We shall call such functors (whose codomain is an optic category) \textit{optic functors}.
+
+We have already seen an example of this kind of operation! In our definition
+of \textit{FastSetIndex} above, we represented the optic, as a path of indices.
+If we wanted to, we could consider this path of indices description a category
+(e.g. the category in which objects are Julia datatypes and there is morphisms
+from a datatype to each of its field types). In this case, the
+optic functor is essentially the definitions of the \textit{left} and
+\textit{right} generic, functions. Of course, we could have also left off the
+subtype and instead defined a constructor of \textit{OpticRepr} with the
+\textit{left} and \textit{right} definitions inline (such a constructor does
+exist in our above definition, by virtue of the subtype). In that case, we
+might want to check the functor law like so:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> o₁ = OpticRepr(FastSetIndex(2) ⨟
+                      FastSetIndex(1))
+julia> o₂ = OpticRepr(FastSetIndex(2)) ⨟
+            OpticRepr(FastSetIndex(1))
+julia> o₁(c->c+100, tup)
+(1, (102, 3))
+
+julia> o₂(c->c+100, tup)
+(1, (102, 3))
+\end{minted}
+
+However, it is import to emphasize that while optic functors are required to
+preserve composition, when implemented as above, they are \textbf{not} required
+to produce the same representative. Indeed, in our example:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+julia> o₁.l(tup)[1]
+(1, (2, 3))
+
+julia> o₂.l(tup)[1]
+((1, (2, 3)), (2, 3))
+\end{minted}
+
+the two representatives $o_1$ and $o_2$ are not identical, even though they
+represent the same optic.
+
+\subsection{Optic functors on programs}
+
+We now leave behind our trusty \textit{setindex} example and consider optic
+functors from programs. To keep the discussion somewhat concrete, consider
+the following example: Alice, Bob, and Clara are department heads at
+Consolidated Widgets Incorporated. One day the anti-trust regulator decides that
+Consolidated Widgets Inc is a little too consolidated and trisects the company
+into AliceCo, BobCo and ClaraCo with the three former department heads promoted
+to the CEOs of their respective companies. They now have a problem: While they
+know how to manufacture widgets, they now also need to keep track of how much
+each individual part costs and assign profits back to the appropriate company.
+Can optic functors help? Yes!
+
+Suppose the program for widget assembly is simply
+
+\begin{center}
+\begin{minted}[fontsize=\footnotesize,framesep=2mm]{julia}
+widget(sweat, love) = C(A(sweat), B(love))
+\end{minted}
+\end{center}
+
+i.e. Alice and Bob both manufacture subassemblies from raw inputes (sweat and love) and Clara handles
+the final assembly). We wish to construct an optic functor $\textbf{\euro{}}$ that
+takes in the widget construction function and spits out a function that both
+constructs the widgets and accumulates prices on the left side of the optic,
+and then distributes the profits on the right side of the optic after the widgets
+have been sold. Now, we have four function of interest here $widget$, $A$, $B$
+and $C$. For each of $A$, $B$ and $C$, we need to do some manual work.
+Alice, Bob, and Clara need to do some manual work to figure out what their costs are.
+We say that $A$, $B$ and $C$ are \textit{primitive} with respect to this functor.
+Alright, let's suppose we have our prices (for simplicity $10\euro{}$ for Alice,
+$20\euro{}$ for Bob and $30\euro{}$ for Clara). We will also give each of them
+a flat $30\%$ profit margin. We will use the continuation
+encoding of the optic to specify the value of $\textbf{\euro{}}$ on each of our
+primitives:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+|$\textbf{\euro{}}$|A(price, sweat) = let cost=|$10$|;
+  (price + cost, A(sweat)),
+    profit->(profit - cost * 1.3)
+end
+|$\textbf{\euro{}}$|B(price, love) = let cost=|$20$|;
+  (price + cost, B(love)),
+    profit->(profit - cost * 1.3)
+end
+\end{minted}
+
+$C$ is a little more tricky. For $C$, we have two arguments, so on right side
+of the optic, we need to produce two outputs. There are several ways to model
+this. We could consider only allowing function with a single input and a single
+output, together with primitive operations for packing (into a tuple) and
+unpacking, or we could simply require the output to always be a tuple whose
+length matches the original number of arguments. Here we pick the latter
+encoding and write:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+|$\textbf{\euro{}}$|C(aprice, bprice, a, b) = let cost=|$30$|;
+  (aprice + bprice + cost, C(a, b)),
+    profit->(take(profit, aprice),
+             take(profit, bprice))
+end
+\end{minted}
+
+Ok, phew that was a bit of work to figure out all the primitives. However, now
+that this is done, we do get some reward for our efforts. We get the definition
+of $\textbf{\euro{}}widget$ for free by applying the functor law. Recall that
+we essentially defined $widget = (A \otimes B) \bbsemi C$. Thus, applying the
+functor law, we immediately get that $\textbf{\euro{}}widget = (\textbf{\euro{}}A \otimes \textbf{\euro{}}B) \bbsemi \textbf{\euro{}}C$
+
+By tracing through definitions, we can write out an explicit representative in
+the continuation encoding:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+function |\textbf{\euro{}}|widget(sweat_cost, love_cost, sweat, love)
+  aprice, |$a$|, |$a^\star$| = |\textbf{\euro{}}A|(sweat_cost, sweat)
+  bprice, |$b$|, |$b^\star$| = |\textbf{\euro{}}B|(love_cost, love)
+  price, |$c$|, |$c^\star$| = |\textbf{\euro{}}C|(aprice, bprice, a, b)
+  price, |$c$|, profit->begin
+    (|$a^\dagger$|,|$b^\dagger$|) = |$c^\star$|(profit)
+    |$\text{love}^\dagger$| = |$b^\star$|(|$b^\dagger$|)
+    |$\text{sweat}^\dagger$| = |$a^\star$|(|$a^\dagger$|)
+    (|$\text{sweat}^\dagger$|, |$\text{love}^\dagger$|)
+  end
+end
+\end{minted}
+
+Now, this might seem a bit complicated (and it is), but that is precisely the
+point. Writing this out explicitly is quite tedious, but there are no choices
+to be made in how it is written. \textbf{Once we have defined the optic functor on the
+requisite primitives, we can make use of the composition law to generate a
+representative of the functor applied to any function that is a composition
+for our primitives.}
+
+\subsection{Some notation}
+
+As we saw in the previous section, the explicit representatives generated by
+optic functors can be quite complicated. To avoid getting lost, we should make
+some notational conventions. To begin with, we shall consider input programs
+to be represented by their SSA form representation. We shall assume that the
+reader is familiar with SSA form IR (if not, see the Julia devdocs on SSA form
+IR). Now, let $\textbf{\euro{}}$ be an optic functor. In the context of applying
+$\textbf{\euro{}}$ to some function $f$, we shall say that $f$ is the \textit{primal
+function} and similarly we shall call the value computed by $f$ the \textit{primal value}.
+From now on, we will generally be working with the continuation
+encoding of an optic. By abuse of notation, we will write $\textbf{\euro{}} f$
+for the function that is the canonical representative of the optic in
+continuation encoding (canonical here meaning obtained by straightforward
+application of the functor laws). We shall call this function the \textit{optic
+ function}. We shall call the value returned from the optic function the \textit{focal bundle}.
+Since we sometimes want to look at it in isolation, we will call
+the continuation generated by the optic function, the \textit{pullback function},
+written $f^\star$ for some primal function $f$. Since $f^\star$ depends on the
+representative, unless otherwise specified, $f^\star$ shall refer to the pullback
+function generated by the canonical optic function.
+
+When looking at SSA form, IR, for some SSA value $\%a = A(...)$ in the primal function,
+we will write $(\%a, \%a^\star) = \textbf{\euro{}} A(...)$ in the optic function.
+The intended implication here is that $\%a$ in the optic function is the same value
+as $\%a$ in the primal function. This will generally be the case, as long as
+the optic primitives obey this constraint. However, we have not required this
+invariant on primitives in our definition of the optic functor and there are
+(rare) cases in which it is useful for these to be different. Where the
+distinction matters, the context should be explicitly specified.
+Lastly, we look at the pullback function. By the optic composition law,
+pullbacks behave contravariantly to the primal function, so for a call
+$c = C(A, B)$ in the primal function, we will have a call
+$(\%a^\dagger, \%b^\dagger) = \underline{\%c^\star}(\%c^\dagger)$. Where in general
+an underline indicates that a value was captured from the optic function.
+
+\subsection{Optic functors from SSA IR}
+
+When we discussed SSA form in section \ref{ssair}, we identified several
+structural features of the IR that did not lift uniquely to the optic category.
+In particular, this means that we have some freedom in choosing how these should
+lift for our optic functor. In particular, the structural aspects of SSA IR that
+did not have a unique lift were:
+
+\begin{itemize}
+\item Copy
+\item Delete
+\item Conditional Branch
+\end{itemize}
+
+As an exercise, let us go through these and choose an implementation.
+
+\subsubsection{Copy}
+
+In our little widget manufacturing example from the previous section, the objects
+being propagated in the primal functions were in general intermediate products
+that could only be used. But what happens if we introduce trivially copyable
+goods into the equation? E.g. suppose Alice and Bob both gain a trivially
+copyable input (perhaps music they like to listen to, or maybe they both
+require a license for JuliaPro), and that Dave produces such an input.
+For simplicity, we will also drop Alice and Bob's other inputs. We have a new
+program:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+function clonewidget()
+    d = D()
+    a = A(d)
+    b = B(d)
+    c = C(a, b)
+end
+\end{minted}
+
+Let us look at some sensible policy choices\footnote{Welcome to Copyright 101 - Today's topic: Category theory.} we might make.
+For example, we could decide that David gets to decide what to charge for each copy of `d':
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+function |$\textbf{\euro{}}$|clone(dprice, d)
+    (dprice, dprice), (d, d),
+    (profit₁, profit₂)->(profit₁ + profit₂)
+end
+\end{minted}
+
+or maybe everybody pays a fixed fee, independent of David's costs:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+    function |$\textbf{\euro{}}$|clone(dprice, d)
+        (1, 1), (d, d),
+        (profit₁, profit₂)->(profit₁ + profit₂)
+    end
+\end{minted}
+
+or maybe everybody pirates his music and David gets payed nothing:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+function |$\textbf{\euro{}}$|clone(dprice, d)
+    (0, 0), (d, d),
+    (profit₁, profit₂)->0
+end
+\end{minted}
+
+or maybe the participants of our economy are playing hot potato, and always
+exactly one of the participants needs to pay:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+function |$\textbf{\euro{}}$|clone(dprice, d)
+    rand(Bool) ? (dprice, 0) : (0, dprice), (d, d),
+    (profit₁, profit₂)->(profit₁ + profit₂)
+end
+\end{minted}
+
+However, note that while this is a valid definition under our definition of
+an optic functor, applying $textbf{\euro{}}$ now leads to accumulation order
+dependence (the same happens in the variant where cloning is done once per value).
+As a result, $textbf{\euro{}}$ would no longer preserve standard SSA invariants.
+This is legal according to our definition, but it can be convenient to be able to
+arbitrarily permute SSA transforms and optic functors. Thus, we would generally
+only ever choose one of the first two definitions.
+
+\subsubsection{Delete}
+
+Like copy, we have some freedom what do here. For our example, it would probably
+make sense to dynamically disallow deleting objects that have a non-zero price,
+so we might write:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside='',mathescape=true]{julia}
+function '$\textbf{\euro{}}$'delete(dprice, d)
+    dprice == 0 || error("Who's gonna pay for that?")
+    ()->(0,)
+end
+\end{minted}
+
+\subsubsection{Branch}
+
+Again we have several potential choices. The primary reason that the branch
+operation was non-canonical was because of the implicit delete of the branch
+condition. However, it is possible for us to implement more complicated
+behaviors. For example suppose we wanted to proportionately assign to each
+input. We might write something like (encoding for the branch functor is
+slightly tricky, this is one example):
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+function |$\textbf{\euro{}}$|branch(aprices, cprice, as, c)
+    # Smear the cost of `c' proportionately
+    total_a = sum(aprices)
+    aprices = map(p->p*(1 + cprice/total_a), aprices)
+    aprices, (c, as), profit->begin
+        (profit - cprice), cprice
+    end
+end
+\end{minted}
+
+However, as with the prior discussion, this would not match standard ssa behavior
+(i.e. programs equivalent under SSA would not longer be equivalent when lifted).
+As before, this is legal, but may not be desirable.
+
+\section{Tangent spaces}
+
+We will briefly define the concepts relevant to us, but otherwise defer to any
+introductory text on differential geometry \footnote{e.g. https://faculty.math.illinois.edu/~lerman/518/f11/8-19-11.pdf}. Let $M$ be a smooth manifold,
+$C^\infty(M)$ the space of smooth functions on $M$. A tangent vector $\nu$ to $M$
+at $a$ is an $\mathbb{R}$-linear derivation from $C^\infty(M)$ into $\mathbb{R}$,
+i.e. a function from $C^\infty(M) \to \mathbb{R}$ satisfying:
+
+\[
+\nu(f \cdot g)(x) = g(a)\cdot \nu(f) + f(a) \cdot \nu(g)
+\]
+
+The collection of all tangent vectors to $M$ at $a$ form a vector space, called
+the tangent space to $M$ at $a$, $T_a M$. Additionally, if we glue all these
+vector spaces together, we obtain the tangent bundle $T M$.
+
+We can dualize this vector space and obtain the cotangent bundle $T^\star M$.
+Sections of the cotangent bundle are also called differential 1-forms.
+
+If we have a function between manifolds, say $f: M \to N$, we obtain a pushforward
+of tangent spaces: $f_\star: T_M \to T_N$ given by:
+
+\[
+(f_\star \nu) g = \nu(g \circ f)
+\]
+
+(for $g: C^\infty(M)$), as well as a pullback of cotangent spaces $f^\star: T^\star N \to T^\star M$
+given by
+
+\[
+(f^\star dx) \nu = dx(f_\star \nu)
+\]
+
+These notions are generalizations of some of the standard notions of derivatives
+that may be familiar from multivariable calculus. Suppose $f: \R^n \to \R^m$,
+Let $\pi_i$ be the component projection function. We obtain a canonical basis,
+of the tangent space $T \R^n$ given by the unique functions such that
+\[
+\nu_i (\pi_j) = i == j
+\]
+And similarly for the cotangent space.
+
+Now the Jacobian $J f$ defined by
+
+\[
+(J f)_{ij} = \frac{\partial f_i}{\partial x_j}
+\]
+
+is just matrix obtained by pushing forward the standard basis fo $T \R^n$ using
+$f_\star$. Equivalently, it is the transpose of the pullback of the standard
+basis of $T^\star \R^m$.
+
+As a special case suppose $m=1$. Then we have a function $\nabla f: \R^n \to \R$,
+the gradient of $f$ at $x$. Using our language, this is simply the pullback of
+the differential one form $dx_1$ from $T^* \R$.
+
+\section{Reverse mode AD}
+
+There are many ways to describe the difference between forward and reverse mode
+AD, but using our newfound language, it becomes quite simple: Forward mode AD
+pushes forward tangent vectors, while reverse mode AD pulls back cotangent vectors.
+
+Now for the payoff from all of our hard work from the previous sections: Computing
+pullbacks of differential forms has the structure of an optic. As a concrete
+example, suppose we wanted to compute the gradient $\nabla f$. Tracing through our
+definitions above, we find that:
+
+\[
+\nabla f (x) = f^\star(dx_1(f(x)))
+\]
+
+so two evaluate this function we first have a covariant evaluation of $f$,
+followed by a contravariant evaluation of $f^\star$. Now for the formal construction:
+Let $\mathcal{C}$ be the category of Riemannian manifolds. We have an optic
+category $\Optic_{\mathcal{C}}(T^\star M)$
+\footnote{We're cheating here a little bit by calling the pair $(A,A^\prime)$ simply $T^\star M$,
+technically we have a dependent optic $(x: M, T_x M)$, but since our programming
+language does not care about such things, we're happy to cheat an let others work out the tedious details.}
+that pairs to each manifold its
+tangent bundle. Now, guided by the above, we defined a functor:
+
+\[
+\overleftarrow{\partial} f: \mathcal{C} \to \Optic_{\mathcal{C}}(T^\star M)
+\]
+
+where as indicated, $\overleftarrow{\partial} M = T^\star M$ and on morphisms
+$\overleftarrow{\partial} f = \langle (a\to(a,f(a)), (a, z) \to f^\star|_{a}(z) \rangle$.
+
+We call this functor the \textbf{Reverse mode AD optic functor}.
+
+There is very little left to do at this point, but our program above did teach
+us that we need to define a few things:
+
+For copy, we simply write
+\[
+    \overleftarrow{\partial} copy(x) = (x, x), (\Delta_1, \Delta_2) \to \Delta_1 + \Delta_2
+\]
+which is the unique map that preserves linear of the pullback. For delete:
+\[
+    \overleftarrow{\partial} delete(x) = ()\to 0
+\]
+For branch we have a choice. We could either inherit the behavior from delete
+or return a poison value on the backwards pass. This is a user level policy decision.
+
+Lastly, we of course need to define derivatives for our primitives. We defer
+this task to ChainRules.jl.
+
+\section{Implementation details}
+
+The key to a performant reverse mode AD implementation is to pick
+efficient residual representatives $M$ for our optic as well as introducing
+minimal additional overhead in the tensor. In julia, the latter means
+being amenable to type inference (as well as ideally not being significantly harder
+on type inference than a simple primal inference to avoid unexpected performance
+cliffs). So, how do perform type inference on morphisms from the optic? Well,
+if we pick a particular representative, we obtain morphisms in the underlying
+category that we can do with whatever we want, including performing inference.
+However, picking a representative of course fixes the residual, which we'd like
+to avoid. Additionally, we run into problems with nested application of the
+functor.
+
+\bibliographystyle{IEEEtran}
+\bibliography{IEEEabrv,terminology}{}
+
+\end{document}
