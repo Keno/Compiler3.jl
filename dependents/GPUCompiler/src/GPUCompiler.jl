@@ -9,6 +9,8 @@ using TimerOutputs
 
 using Libdl
 
+using Compiler3
+
 const to = TimerOutput()
 
 timings() = (TimerOutputs.print_timer(to); println())
@@ -23,6 +25,7 @@ include("error.jl")
 include("native.jl")
 include("ptx.jl")
 include("gcn.jl")
+include("spirv.jl")
 
 include("runtime.jl")
 

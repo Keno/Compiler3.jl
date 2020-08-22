@@ -1,5 +1,41 @@
-using InteractiveUtils, UUIDs
+import InteractiveUtils
+
+using UUIDs
 const Cthulhu = Base.PkgId(UUID("f68482b8-f384-11e8-15f7-abe071a5a75f"), "Cthulhu")
+
+
+#
+# syntax highlighting
+#
+
+const _pygmentize = Ref{Union{String,Nothing}}()
+function pygmentize()
+    if !isassigned(_pygmentize)
+        _pygmentize[] = Sys.which("pygmentize")
+    end
+    return _pygmentize[]
+end
+
+function highlight(io::Base.TTY, code, lexer)
+    highlighter = pygmentize()
+    have_color = get(io, :color, false)
+    if highlighter === nothing || !have_color
+        print(io, code)
+        return code
+    else
+        custom_lexer = joinpath(dirname(@__DIR__), "res", "pygments", "$lexer.py")
+        if isfile(custom_lexer)
+            lexer = `$custom_lexer -x`
+        end
+
+        pipe = open(`$highlighter -f terminal -P bg=dark -l $lexer`, "r+")
+        print(pipe, code)
+        close(pipe.in)
+        print(io, read(pipe, String))
+    end
+end
+
+highlight(io, code, lexer) = print(io, code)
 
 
 #
@@ -56,9 +92,9 @@ function code_llvm(io::IO, job::CompilerJob; optimize::Bool=true, raw::Bool=fals
     # NOTE: jl_dump_function_ir supports stripping metadata, so don't do it in the driver
     ir, entry = GPUCompiler.codegen(:llvm, job; optimize=optimize, strip=false, validate=false)
     str = ccall(:jl_dump_function_ir, Ref{String},
-                (Ptr{Cvoid}, Bool, Bool, Ptr{UInt8}),
-                LLVM.ref(entry), !raw, dump_module, debuginfo)
-    print(io, str)
+                (LLVM.API.LLVMValueRef, Bool, Bool, Ptr{UInt8}),
+                entry, !raw, dump_module, debuginfo)
+    highlight(io, str, "llvm")
 end
 code_llvm(job::CompilerJob; kwargs...) = code_llvm(stdout, job; kwargs...)
 
@@ -75,9 +111,9 @@ The following keyword arguments are supported:
 
 See also: [`@device_code_native`](@ref), `InteractiveUtils.code_llvm`
 """
-function code_native(io::IO, job::CompilerJob; raw::Bool=false)
-    asm, _ = GPUCompiler.codegen(:asm, job; strip=!raw, validate=false)
-    print(io, asm)
+function code_native(io::IO, job::CompilerJob; raw::Bool=false, dump_module::Bool=false)
+    asm, _ = GPUCompiler.codegen(:asm, job; strip=!raw, only_entry=!dump_module, validate=false)
+    highlight(io, asm, source_code(job.target))
 end
 code_native(job::CompilerJob; kwargs...) =
     code_native(stdout, func, types; kwargs...)
