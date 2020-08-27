@@ -27,6 +27,7 @@
 \usepackage{cite}
 \usepackage[utf8]{inputenc}
 \usepackage[gen]{eurosym}
+\usepackage{etoolbox}
 
 
 \usepackage{tikz-cd}
@@ -49,6 +50,7 @@
 \newcommand{\hto}{\ensuremath{\,\mathaccent\shortmid\rightarrow\,}}
 \newcommand{\id}{\text{id}}
 \newcommand{\R}{\mathbb{R}}
+\newcommand{\Hom}{\text{Hom}}
 \DeclareSymbolFont{bbsymbol}{U}{bbold}{m}{n}
 \DeclareMathSymbol{\bbsemi}{\mathbin}{bbsymbol}{"3B}
 
@@ -533,7 +535,7 @@ so as ot facilitate the future addition of side effects.}.
 Having defined the structure for our bimonoidal category $SSA_{\mathcal{C}}$,
 what can we say about the structure of $\text{Optic}_{SSA_{\mathcal{C}}}$?
 To be explicit, we're still performing the optic construction with respect to
-the $\oplus$ structure of our category. Let us first look at the product itself.
+the $\otimes$ structure of our category. Let us first look at the product itself.
 Do we have a diagonal map in $\text{Optic}_{SSA}$? Perhaps surprisingly, the answer
 is no! To see this, let's consider what we must construct:
 
@@ -967,6 +969,494 @@ As a special case suppose $m=1$. Then we have a function $\nabla f: \R^n \to \R$
 the gradient of $f$ at $x$. Using our language, this is simply the pullback of
 the differential one form $dx_1$ from $T^* \R$.
 
+\section{Advanced Optics considerations}
+
+\subsection{Action of an Optic on the underlying category}
+
+The category $\Optic_\mathcal{C}$ acts on the underlying category $\mathcal{C}$
+in the following sense: We have a contravariant functor $p: \Optic_\mathcal{C} \to \text{Set}$
+that assigns to every object $(A, A^\prime)$ the set $Hom(A, A\prime)$ and to
+morphisms $\langle l | r \rangle$ the morphism $p \langle l | r \rangle: Hom(B, B\prime) \to Hom(A, A\prime)$
+given by:
+\[
+p \langle l | r \rangle f = l \bbsemi (id_M \otimes f) \bbsemi r
+\]
+
+or graphically by assigning to a morphism $f \in \Hom(B, B^\prime)$ the morphism
+obtained by plugging $f$ into the "hole" of the optic:
+
+\begin{center}
+    \begin{tikzpicture}
+        \node[vert] (l) at (0, 0) {$l$};
+        \node[vert] (r) at (4, 0) {$r$};
+
+        \node (S) [left of=l] {$A$};
+        \node (A) [below right = 0.2 and 0.4 of l] {$B$};
+        \node (S') [right of=r] {$A'$};
+        \node (A') [below left = 0.2 and 0.4 of r] {$B'$};
+
+        \node[vert, right=0.5 of A] (f) {$f$};
+
+        \draw[->] (S) -- (l);
+        \draw[->] (l) to[out=south east,in=west] (A);
+
+        \draw[<-] (S') -- (r);
+        \draw[<-] (r) to[out=south west,in=east] (A');
+
+        \draw[->] (l) to[out=north east, in=west] ++(1,0.5)
+         to ++(2,0)
+         to[out=east, in=north west] (r)
+        ;
+
+        \draw[->] (A) -- (f) -- (A');
+    \end{tikzpicture}
+\end{center}
+
+
+\subsection{Higher order optics}
+
+As hinted at above and proven in detail in Riley \cite{riley:optics}, $\Optic$
+is an endofunctor on the category of symmetric monoidal categories, i.e. for
+a symmetric monoidal category $\mathcal{C}$, $\Optic_{\mathcal{C}}$ is once again
+a symmetric monoidal category. In particular, this means we may repeat the
+application of $\Optic$ to obtain higher order optics. Let us explicitly
+characterize second order optics such that we may discuss some features that
+will come in later. Objects in $\Optic_{\Optic_{\mathcal{C}}}$ are pairs of
+objects in $\Optic_{\mathcal{C}}$, i.e. in general quadruplets of objects in
+the original category. We will write $\left(\begin{array}{cc} (A_1 & A_2) \\ (A_3 & A_4) \end{array}\right)$
+for the higher order optic that pairs the objects $\left(\begin{array}{cc} A_1 \\ A_2\end{array}\right)$
+$\left(\begin{array}{cc} A_3 \\ A_4\end{array}\right)$ from the original optic category.
+Then a representative of the optic morphisms
+$\Optic\left(\left(\begin{array}{cc} (A_1 & A_2) \\ (A_3 & A_4) \end{array}\right),
+\left(\begin{array}{cc} (B_1 & B_2) \\ (B_3 & B_4) \end{array}\right)\right)$,
+is a pair of optics $\langle \mathcal{O}_l | \mathcal{O}_r \rangle$ where
+\[
+\mathcal{O}_l \in \Optic\left(\left( \begin{array}{c} A_1 \\ A_2 \end{array} \right),
+\left( \begin{array}{c} M_\mathcal{O} \\ M_\mathcal{O}^\prime \end{array} \right) \otimes
+\left( \begin{array}{c} B_1 \\ B_2 \end{array} \right)
+\right)
+\]
+\[
+\mathcal{O}_r \in \Optic\left(
+\left( \begin{array}{c} M_\mathcal{O} \\ M_\mathcal{O}^\prime \end{array} \right) \otimes
+\left( \begin{array}{c} B_3 \\ B_4 \end{array} \right),
+\left( \begin{array}{c} A_4 \\ A_4 \end{array} \right)
+\right)
+\]
+
+. We take representatives $\langle l_l | r_l \rangle$ of $\mathcal{O}_l$
+and $\langle l_r | r_r \rangle$ of $\mathcal{O}_r$ with residuals $M_l$ and $M_r$
+respectively. Writing the morphisms out algebraically is a bit confusing, so
+let's look at the graphical representation:
+
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (ll) at (0, 0) {$l_l$};
+        \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$l_r$};
+        \node[vert, right=7 of ll] (rr) {$r_l$};
+        \node[vert, left=2.3 of rr, yshift=-4mm] (rl) {$r_r$};
+
+        \node (A1) [above left=0.8 and 0.4 of ll] {$A_1$};
+        \node (A2) [above right=0.8 and 0.4 of rr] {$A_2$};
+
+        \node (B1) [below right=0.7 and 0.8 of ll] {$B_1$};
+        \node (B3) [right=0.7 of B1] {$B_3$};
+
+        \node (A3) [below right=0.7 and 0.8 of lr] {$A_3$};
+        \node (A4) [right=0.7 of A3] {$A_4$};
+
+        \node (B2) [below left=0.7 and 0.8 of rr] {$B_2$};
+        \node (B4) [left=0.7 of B2] {$B_4$};
+
+        \node[draw,dashed,fit=(B1) (B3), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A3) (A4), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(B2) (B4), inner xsep = 2pt] (box3) {};
+        \draw[dashed] ($(box1.south) - (0,0.4)$) -- ++(0,1.9) -- ($(box3.south) + (0,1.5)$) -- ($(box3.south) - (0,0.4)$);
+
+        \draw [->] (A1) -- (ll);
+        \draw [->] (rr) -- (A2);
+
+        \draw [->] (ll) -- ++(1.8,0) node[midway, fill=white] {$M_{\mathcal{O}}$} to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east,in=west] (B1);
+        \draw [->] (B3) to[out=east,in=south west] (lr);
+
+        \draw [->] (lr) -- node[midway, fill=white] {$M_r$} (rl);
+        \draw [->] (lr) to[out=south east,in=west] (A3);
+        \draw [->] (A4) to[out=east,in=south west] (rl);
+
+        \draw [->] (rl) to[out=north east, in=west] ($(rr)-(1.8,0)$) -- node[midway, fill=white] {$M_{\mathcal{O}}^\prime$} (rr);
+        \draw [->] (rl) to[out=south east,in=west] (B4);
+        \draw [->] (B2) to[out=east,in=south west] (rr);
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         -- ++(5,0) node[midway,fill=white] {$M_l$}
+         to[out=east, in=north west] (rr)
+        ;
+    \end{tikzpicture}
+\end{center}
+
+Here the dashed line plays the same role it did in the original diagram of
+the optic: To compose optics, we "slice" along the dashed line and insert
+the next higher order optic in the middle. To illustrate the composition,
+we will first look at two diagrams stacked on top of each other using the
+same structure as in the previous diagram, to make the flow of operations
+obvious.
+
+\begin{center}
+\input{2opticcomp.tikz}
+\end{center}
+
+We can relayout this to make the four segments more obvious. This is done in
+figure \ref{2comphor}. Now, if $\euro{}: \mathcal{C} \to \Optic_\mathcal{C}$ is an
+optic functor, then since it is monoidal functor, it immediately lifts to a functor:
+$\euro: \Optic_{\mathcal{C}} \to \Optic_{\Optic_\mathcal{C}}$. Note that optics
+constructed in this way will generally be more constrained than the full optics
+construction. For example, the 2-optic we constructed above has objects that
+are in general $4$-tuples $((A_1, A_2), (A_3, A_4))$ and more generally an $n$-optic
+will have objects are $2^n$ tuples of objects in the base category. However,
+if we obtain an optic by repeated application of an optic functor, several
+of these objects will be the same and we will generally have $1+n$ different
+objects of the base category in play. E.g. $\euro \euro f$ for some
+morphism $f: A\to B$, would give a 2-optic $((A, A'),(A', A'')) \to ((B,B'),(B',B''))$.
+
+For completeness, let us repeat this diagram, making use of the notation we established
+above for optic obtained from optic functors:
+
+
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (ll) at (0, 0) {$\euro \euro f$};
+        \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$\euro(f^\star)$};
+        \node[vert, right=7 of ll] (rr) {$(\euro f)^\star$};
+        \node[vert, left=2.3 of rr, yshift=-4mm] (rl) {$f^{\star\star}$};
+
+        \node (A1) [above left=0.8 and 0.4 of ll] {$A$};
+        \node (A2) [above right=0.8 and 0.4 of rr] {$A'$};
+
+        \node (B1) [below right=0.7 and 0.8 of ll] {$B$};
+        \node (B3) [right=0.7 of B1] {$B'$};
+
+        \node (A3) [below right=0.7 and 0.8 of lr] {$A'$};
+        \node (A4) [right=0.7 of A3] {$A''$};
+
+        \node (B2) [below left=0.7 and 0.8 of rr] {$B'$};
+        \node (B4) [left=0.7 of B2] {$B''$};
+
+        \node[draw,dashed,fit=(B1) (B3), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A3) (A4), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(B2) (B4), inner xsep = 2pt] (box3) {};
+
+        \draw [->] (A1) -- (ll);
+        \draw [->] (rr) -- (A2);
+
+        \draw [->] (ll) -- ++(1.8,0) node[midway, fill=white] {$M_{\euro}$} to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east,in=west] (B1);
+        \draw [->] (B3) to[out=east,in=south west] (lr);
+
+        \draw [->] (lr) -- node[midway, fill=white] {$M_r$} (rl);
+        \draw [->] (lr) to[out=south east,in=west] (A3);
+        \draw [->] (A4) to[out=east,in=south west] (rl);
+
+        \draw [->] (rl) to[out=north east, in=west] ($(rr)-(1.8,0)$) -- node[midway, fill=white] {$M_{\euro}^\prime$} (rr);
+        \draw [->] (rl) to[out=south east,in=west] (B4);
+        \draw [->] (B2) to[out=east,in=south west] (rr);
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         -- ++(5,0) node[midway,fill=white] {$M_l$}
+         to[out=east, in=north west] (rr)
+        ;
+    \end{tikzpicture}
+\end{center}
+
+\begin{figure*}
+    \begin{center}
+    \begin{tikzpicture}[on grid]
+
+        \node[vert] (ll) at (0, 0) {$l_l$};
+        \node[vert, right=1.4 of ll, yshift=-10mm] (ll') {$l_l^\prime$};
+        \node[vert, right=3 of ll', yshift=-7mm] (lr') {$l_r^\prime$};
+        \node[vert, right=1.4 of lr', yshift=-10mm] (lr) {$l_r$};
+
+        \node[vert, right=15 of ll] (rr) {$r_r$};
+        \node[vert, left=1.4 of rr, yshift=-10mm] (rr') {$r_r^\prime$};
+        \node[vert, left=3 of rr', yshift=-7mm] (rl') {$r_l^\prime$};
+        \node[vert, left=1.4 of rl', yshift=-10mm] (rl) {$r_l$};
+
+        \node[left=of ll] (A1) {$A_1$};
+        \node[right=of rr] (A2) {$A_2$};
+
+        \node (C1) [below right=0.7 and 1 of ll'] {$C_1$};
+        \node (C3) [right=of C1] {$C_3$};
+
+        \node (C2) [below left=0.7 and 1 of rr'] {$C_2$};
+        \node (C4) [left=0.7 of C2] {$C_3$};
+
+        \node (A3) [below right=0.7 and 1 of lr] {$A_3$};
+        \node (A4) [right=of A3] {$A_4$};
+
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         to ++(13,0)
+         to[out=east, in=north west] (rr)
+        ;
+
+        \draw [->] (ll) -- ++(5,0) to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east, in=west] (ll');
+
+        \draw [->] (ll') to[out=south east, in=west] (C1);
+        \draw [->] (C3) to[out=east, in=west] (lr');
+        \draw [->] (ll') to[out=east, in=north west] (lr');
+
+        \draw [->] (lr') -- (rl');
+        \draw [->] (lr') to[out=south east, in=west] (lr);
+
+        \draw [->] (lr) to[out=south east, in=west] (A3);
+        \draw [->] (A4) to[out=east, in=west] (rl);
+
+        \draw [->] (rl) to[out=east, in=south west] (rl');
+
+        \draw [->] (rl') to[out=north east, in=west] (rr');
+        \draw [->] (rr') to[out=east, in=south west] (rr);
+
+        \draw [->] (rl') -- (C4);
+        \draw [->] (C2) to[out=east,in=south west] (rr');
+
+        \draw [->] (rl) to[out=north east, in=west] ($(rr) - (5,0)$) -- (rr);
+
+        \draw [->] (A1) -- (ll);
+        \draw [->] (rr) -- (A2);
+
+        \node[draw,dashed,fit=(C1) (C3), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A3) (A4), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(C2) (C4), inner xsep = 2pt] (box3) {};
+
+        \draw[dashed] ($(box1.south) - (0,1)$) -- ($(box1.south) + (0,1.4)$) -- ($(box3.south) + (0,1.4)$) -- ($(box3.south) - (0,1)$);
+
+        \draw[dashed] ($(ll.south) - (1,0.1)$) -- ($(rr.south) + (1,-0.1)$);
+        \draw[dashed] ($(lr.north) - (7,-0.1)$) -- ($(rl.north) + (7,0.1)$);
+    \end{tikzpicture}
+    \end{center}
+    \caption{Composition of two second order optics layed out horizontally. Indicated by dashed lines are the cut/glue lines
+    of the original optic (as well as the resulting optic, which corresponds with the cutline of the second optic).}
+    \label{2comphor}
+\end{figure*}
+
+For completeness, let us proceed for one more step and explicitly draw a 3-optic.
+As before, we have a pair of two 2-optics:
+
+
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (ll) at (0, 0) {$l_{l_l}$};
+        \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$l_{l_r}$};
+        \node[vert, right=7 of ll] (rr) {$l_{r_l}$};
+        \node[vert, left=2.3 of rr, yshift=-4mm] (rl) {$l_{r_r}$};
+
+        \node (A1) [above left=0.8 and 0.4 of ll] {$A_1$};
+        \node (A2) [above right=0.8 and 0.4 of rr] {$A_2$};
+
+        \node (B1) [below right=0.7 and 0.8 of ll] {$B_1$};
+        \node (B3) [right=0.7 of B1] {$B_3$};
+
+        \node (M1) [below=0.7 of B1] {$M_1$};
+        \node (M3) [below=0.7 of B3] {$M_3$};
+
+        \node (A3) [below right=0.7 and 0.8 of lr] {$A_3$};
+        \node (A4) [right=0.7 of A3] {$A_4$};
+
+        \node (B2) [below left=0.7 and 0.8 of rr] {$B_2$};
+        \node (B4) [left=0.7 of B2] {$B_4$};
+
+        \node (M2) [below=0.7 of B2] {$M_2$};
+        \node (M4) [below=0.7 of B4] {$M_4$};
+
+        \node[draw,dashed,fit=(B1) (B3) (M1) (M3), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A3) (A4), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(B2) (B4) (M2) (M4), inner xsep = 2pt] (box3) {};
+
+        \draw [->] (A1) -- (ll);
+        \draw [->] (rr) -- (A2);
+
+        \draw [->] (ll) -- ++(1.8,0) node[midway, fill=white] {$M_{l_{\mathcal{O}}}$} to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east,in=west] (B1);
+        \draw [->] (ll) to[out=south east,in=west] (M1);
+        \draw [->] (B3) to[out=east,in=south west] (lr);
+        \draw [->] (M3) to[out=east,in=south west] (lr);
+
+        \draw [->] (lr) -- node[midway, fill=white] {$M_{l_r}$} (rl);
+        \draw [->] (lr) to[out=south east,in=west] (A3);
+        \draw [->] (A4) to[out=east,in=south west] (rl);
+
+        \draw [->] (rl) to[out=north east, in=west] ($(rr)-(1.8,0)$) -- node[midway, fill=white] {$M_{l_\mathcal{O}}^\prime$} (rr);
+        \draw [->] (rl) to[out=south east,in=west] (B4);
+        \draw [->] (rl) to[out=south east,in=west] (M4);
+        \draw [->] (B2) to[out=east,in=south west] (rr);
+        \draw [->] (M2) to[out=east,in=south west] (rr);
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         -- ++(5,0) node[midway,fill=white] {$M_{l_l}$}
+         to[out=east, in=north west] (rr)
+        ;
+    \end{tikzpicture}
+\end{center}
+
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (ll) at (0, 0) {$r_{l_l}$};
+        \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$r_{l_r}$};
+        \node[vert, right=7 of ll] (rr) {$r_{r_l}$};
+        \node[vert, left=2.3 of rr, yshift=-4mm] (rl) {$r_{r_r}$};
+
+        \node (A1) [above left=0.8 and 0.4 of ll] {$B_5$};
+        \node (A2) [above right=0.8 and 0.4 of rr] {$B_6$};
+        \node (A3) [below right=0.7 and 0.8 of lr] {$B_7$};
+        \node (A4) [right=0.7 of A3] {$B_8$};
+
+        \node (B1) [below right=0.7 and 0.8 of ll] {$A_5$};
+        \node (B3) [right=0.7 of B1] {$A_7$};
+        \node (B2) [below left=0.7 and 0.8 of rr] {$A_6$};
+        \node (B4) [left=0.7 of B2] {$A_8$};
+
+        \node (M1) [right=0.7 of A1] {$M_1$};
+        \node (M2) [left=0.7 of A2] {$M_2$};
+        \node (M3) [below=0.7 of A3] {$M_3$};
+        \node (M4) [below=0.7 of A4] {$M_4$};
+
+        \node[draw,dashed,fit=(B1) (B3), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A3) (A4) (M3) (M4), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(B2) (B4), inner xsep = 2pt] (box3) {};
+
+        \draw [->] (A1) -- (ll);
+        \draw [->] (rr) -- (A2);
+        \draw [->] (M1) -- (ll);
+        \draw [->] (rr) -- (M2);
+
+        \draw [->] (ll) -- ++(1.8,0) node[midway, fill=white] {$M_{r_\mathcal{O}}$} to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east,in=west] (B1);
+        \draw [->] (B3) to[out=east,in=south west] (lr);
+
+        \draw [->] (lr) -- node[midway, fill=white] {$M_{r_r}$} (rl);
+        \draw [->] (lr) to[out=south east,in=west] (A3);
+        \draw [->] (lr) to[out=south east,in=west] (M3);
+        \draw [->] (A4) to[out=east,in=south west] (rl);
+        \draw [->] (M4) to[out=east,in=south west] (rl);
+
+        \draw [->] (rl) to[out=north east, in=west] ($(rr)-(1.8,0)$) -- node[midway, fill=white] {$M_{r_\mathcal{O}}^\prime$} (rr);
+        \draw [->] (rl) to[out=south east,in=west] (B4);
+        \draw [->] (B2) to[out=east,in=south west] (rr);
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         -- ++(5,0) node[midway,fill=white] {$M_{r_l}$}
+         to[out=east, in=north west] (rr)
+        ;
+    \end{tikzpicture}
+\end{center}
+
+Now, writing down the 3-optic is simply a matter of matching up the $M$s, and
+setting corresponding gaps opposite each other. This is done in figure \ref{fig:3optic}.
+Additionally, the composition rule for 3 optics is shown in the appendix in figure
+\ref{fig:3opticcomp}.
+
+\begin{figure*}
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (lll) at (0, 0) {$l_{l_l}$};
+        \node[vert, right=2.3 of lll, yshift=-4mm] (rll) {$r_{l_l}$};
+        \node[vert, right=2.3 of rll, yshift=-4mm] (rlr) {$r_{l_r}$};
+        \node[vert, right=2.3 of rlr, yshift=-4mm] (llr) {$l_{l_r}$};
+
+        \node[vert, right=16 of ll] (lrl) {$l_{r_l}$};
+        \node[vert, left=2.3 of lrl, yshift=-4mm] (rrl) {$r_{r_l}$};
+        \node[vert, left=2.3 of rrl, yshift=-4mm] (rrr) {$r_{r_r}$};
+        \node[vert, left=2.3 of rrr, yshift=-4mm] (lrr) {$l_{r_r}$};
+
+        \node (A1) [left=0.8 of lll] {$A_1$};
+        \node (A2) [right=0.8 of lrl] {$A_2$};
+
+        \node (B1) [below right=0.7 and 0.75 of lll] {$B_1$};
+        \node (B5) [right=0.7 of B1] {$B_5$};
+
+        \node (A5) [below right=0.7 and 0.75 of rll] {$A_5$};
+        \node (A7) [right=0.7 of A5] {$A_7$};
+
+        \node (B7) [below right=0.7 and 0.75 of rlr] {$B_7$};
+        \node (B3) [right=0.7 of B7] {$B_3$};
+
+        \node (A3) [below right=0.7 and 0.75 of llr] {$A_3$};
+        \node (A4) [right=0.7 of A3] {$A_4$};
+
+        \node (B8) [below left=0.7 and 0.8 of rrr] {$B_8$};
+        \node (B4) [left=0.7 of B8] {$B_4$};
+
+        \node (A6) [below left=0.7 and 0.8 of rrl] {$A_6$};
+        \node (A8) [left=0.7 of A6] {$A_8$};
+
+        \node (B2) [below left=0.7 and 0.8 of lrl] {$B_2$};
+        \node (B6) [left=0.7 of B2] {$B_6$};
+
+        \node[draw,dashed,fit=(B1) (B5), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A5) (A7), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(B7) (B3), inner xsep = 2pt] (box3) {};
+        \node[draw,dashed,fit=(A3) (A4), inner xsep = 2pt] (box4) {};
+        \node[draw,dashed,fit=(B4) (B8), inner xsep = 2pt] (box5) {};
+        \node[draw,dashed,fit=(A8) (A6), inner xsep = 2pt] (box6) {};
+        \node[draw,dashed,fit=(B6) (B2), inner xsep = 2pt] (box7) {};
+
+
+        \draw [->] (A1) -- (lll);
+        \draw [->] (lrl) -- (A2);
+
+        \foreach \s/\t/\l in {lll/rll/$M_{1}$,
+                              rll/rlr/$M_{r_{\mathcal{O}}}$,
+                              rlr/llr/$M_{3}$} {
+            \draw [->] (\s) -- ++(1.8,0) node[midway, fill=white] {\l} to[out=east, in=north west] (\t);
+        }
+
+        \foreach \s/\t/\l in {lrr/rrr/$M_{4}$,
+                              rrr/rrl/$M_{r_{\mathcal{O}}}^\prime$,
+                              rrl/lrl/$M_{2}$} {
+            \draw [->] (\s) to[out=north east, in=west] ($(\t)-(1.8,0)$) -- node[midway, fill=white] {\l} (\t);
+        }
+
+        \draw[->] (rll) to[out=north east, in=west] ++(1,0.5)
+         -- ++(9.5,0) node[midway,fill=white] {$M_{r_l}$}
+         to[out=east, in=north west] (rrl)
+        ;
+
+        \draw[->] (rlr) to[out=north east, in=west] ++(1,0.4)
+        -- ++(5,0) node[midway,fill=white] {$M_{r_r}$}
+        to[out=east, in=north west] (rrr)
+       ;
+
+
+        \draw[->] (lll) to[out=north east, in=west] ++(1,0.9)
+         -- ++(14,0) node[midway,fill=white] {$M_{l_l}$}
+         to[out=east, in=north west] (lrl)
+        ;
+
+        \draw[->] (lll) to[out=north east, in=west] ++(1,0.5)
+         -- ++(4,0) node[midway,fill=white] {$M_{l_\mathcal{O}}$}
+         to[out=east, in=north west] (llr)
+        ;
+
+        \draw[->] (llr) -- (lrr) node[midway,fill=white] {$M_{l_r}$};
+
+        \draw [->] (lrr) to[out=north east, in=west] ($(lrl)-(5,-0.5)$) -- ++(4,0) node[midway, fill=white] {$M_{l_\mathcal{O}}^\prime$} to[out=east, in=north west] (lrl);
+
+        \foreach \s/\t in {lll/B1, rll/A5, rlr/B7, llr/A3, lrr/B4, rrr/A8, rrl/B6} {
+            \draw[->] (\s) to[out=south east, in=west] (\t);
+        }
+
+        \foreach \s/\t in {B5/rll, A7/rlr, B3/llr, A4/lrr, B8/rrr, A6/rrl, B2/lrl} {
+            \draw[->] (\s) to[out=east, in=south west] (\t);
+        }
+
+    \end{tikzpicture}
+\end{center}
+\caption{Wiring diagram for the canonical 3-optic $(A_{1-8}) \hto (B_{1-8})$}
+\label{fig:3optic}
+\end{figure*}
+
 \section{Reverse mode AD}
 
 There are many ways to describe the difference between forward and reverse mode
@@ -1018,6 +1508,133 @@ or return a poison value on the backwards pass. This is a user level policy deci
 Lastly, we of course need to define derivatives for our primitives. We defer
 this task to ChainRules.jl.
 
+\subsection{Higher order AD}
+
+Let us investigate the structure of higher order AD. As an example,
+let's explicitly show the structure of $\overleftarrow{\partial} \overleftarrow{\partial} \text{sin}$:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+function |$\overleftarrow{\partial} \overleftarrow{\partial}$|sin(x)
+    sin(x), |$\Delta$|->begin
+        |$\Delta$| * cos(x), |$\Delta'$|->begin
+            |$\Delta'$|*|$\Delta$|*(-sin(x)), |$\Delta'$|*cos(x)
+        end
+    end, (|$\Delta'''$|,|$\Delta''$|)->begin
+        |$\Delta''$|*cos(x) + |$\Delta'''$|
+    end
+end
+\end{minted}
+
+Recall from above the diagram for an optic functor
+
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (ll) at (0, 0) {\tiny{$\overleftarrow{\partial} \overleftarrow{\partial} f$}};
+        \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {\tiny{$\overleftarrow{\partial}(f^\star)$}};
+        \node[vert, right=7 of ll] (rr) {\tiny{$(\overleftarrow{\partial} f)^\star$}};
+        \node[vert, left=2.3 of rr, yshift=-4mm] (rl) {\tiny{$f^{\star\star}$}};
+
+        \node (A1) [above left=0.8 and 0.4 of ll] {$A$};
+        \node (A2) [above right=0.8 and 0.4 of rr] {$A'$};
+
+        \node (B1) [below right=0.7 and 0.8 of ll] {$B$};
+        \node (B3) [right=0.7 of B1] {$B'$};
+
+        \node (A3) [below right=0.7 and 0.8 of lr] {$A'$};
+        \node (A4) [right=0.7 of A3] {$A''$};
+
+        \node (B2) [below left=0.7 and 0.8 of rr] {$B'$};
+        \node (B4) [left=0.7 of B2] {$B''$};
+
+        \node[draw,dashed,fit=(B1) (B3), inner xsep = 2pt] (box1) {};
+        \node[draw,dashed,fit=(A3) (A4), inner xsep = 2pt] (box2) {};
+        \node[draw,dashed,fit=(B2) (B4), inner xsep = 2pt] (box3) {};
+
+        \draw [->] (A1) -- (ll);
+        \draw [->] (rr) -- (A2);
+
+        \draw [->] (ll) -- ++(1.8,0) node[midway, fill=white] {$M_{\overleftarrow{\partial}}$} to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east,in=west] (B1);
+        \draw [->] (B3) to[out=east,in=south west] (lr);
+
+        \draw [->] (lr) -- node[midway, fill=white] {$M_r$} (rl);
+        \draw [->] (lr) to[out=south east,in=west] (A3);
+        \draw [->] (A4) to[out=east,in=south west] (rl);
+
+        \draw [->] (rl) to[out=north east, in=west] ($(rr)-(1.8,0)$) -- node[midway, fill=white] {$M_{\overleftarrow{\partial}}^\prime$} (rr);
+        \draw [->] (rl) to[out=south east,in=west] (B4);
+        \draw [->] (B2) to[out=east,in=south west] (rr);
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         -- ++(5,0) node[midway,fill=white] {$M_l$}
+         to[out=east, in=north west] (rr)
+        ;
+    \end{tikzpicture}
+\end{center}
+
+We can identify the various arrows with concrete values in the program:
+
+\begin{center}
+\begin{tabular}{c|c}
+Diagram & Program \\ \hline
+$M_l$ & Capture of $x$ in the last closure \\
+$ M_{\overleftarrow{\partial}} $ & Capture of x in the first closure \\
+B & Return value of $\overleftarrow{\partial} \overleftarrow{\partial} \text{sin}$ \\
+$B'$ & $\Delta$ \\
+$M_r$ & Capture of $\Delta$, $x$ by the inner closure \\
+$A'$ & Primal return value of the first closure ($\Delta * \text{cos}(x)$) \\
+$A''$ & $\Delta'$ \\
+$B''$ & Second return, inner closure ($\Delta' * \text{cos}(x)$) \\
+$M_{\overleftarrow{\partial}}'$ & First return, inner closure ($- \Delta' * \Delta * \text{sin}(x)$) \\
+& Also, $\Delta'''$ \\
+$B'$ & $\Delta''$
+\end{tabular}
+\end{center}
+
+In particular, if we are taking the second derivative of sin, here is the
+dataflow path of the final answer:
+
+\begin{center}
+    \begin{tikzpicture}[on grid]
+        \node[vert] (ll) at (0, 0) {\tiny{$\overleftarrow{\partial} \overleftarrow{\partial} f$}};
+        \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {\tiny{$\overleftarrow{\partial}(f^\star)$}};
+        \node[vert, right=7 of ll] (rr) {\tiny{$(\overleftarrow{\partial} f)^\star$}};
+        \node[vert, left=2.3 of rr, yshift=-4mm] (rl) {\tiny{$f^{\star\star}$}};
+
+        \node (A1) [above left=0.8 and 0.4 of ll] {$A$};
+        \node (A2) [above right=0.8 and 0.4 of rr] {$A'$};
+
+        \node (B1) [below right=0.7 and 0.8 of ll,fill=black] {};
+        \node (B3) [right=0.7 of B1] {$1$};
+
+        \node (A3) [below right=0.7 and 0.8 of lr, fill=black] {};
+        \node (A4) [right=0.7 of A3] {$1$};
+
+        \node (B2) [below left=0.7 and 0.8 of rr] {$0$};
+        \node (B4) [left=0.7 of B2, fill=black] {};
+
+        \draw [->,color=red, very thick] (A1) -- (ll);
+        \draw [->,color=red, very thick] (rr) -- (A2);
+
+        \draw [->,color=red, very thick] (ll) -- ++(1.8,0) node[midway, fill=white] {$x$} to[out=east, in=north west] (lr);
+        \draw [->] (ll) to[out=south east,in=west] (B1);
+        \draw [->,color=red, very thick] (B3) to[out=east,in=south west] (lr);
+
+        \draw [->,color=red, very thick] (lr) -- node[midway, fill=white] {$(1,x)$} (rl);
+        \draw [->] (lr) to[out=south east,in=west] (A3);
+        \draw [->,color=red, very thick] (A4) to[out=east,in=south west] (rl);
+
+        \draw [->,color=red, very thick] (rl) to[out=north east, in=west] ($(rr)-(1.8,0)$) -- node[midway, fill=white] {\small{$-\text{sin}(x)$}} (rr);
+        \draw [->] (rl) to[out=south east,in=west] (B4);
+        \draw [->] (B2) to[out=east,in=south west] (rr);
+
+        \draw[->] (ll) to[out=north east, in=west] ++(1,0.7)
+         -- ++(5,0) node[midway,fill=white] {$M_l$}
+         to[out=east, in=north west] (rr)
+        ;
+    \end{tikzpicture}
+\end{center}
+
 \section{Implementation details}
 
 The key to a performant reverse mode AD implementation is to pick
@@ -1031,6 +1648,146 @@ category that we can do with whatever we want, including performing inference.
 However, picking a representative of course fixes the residual, which we'd like
 to avoid. Additionally, we run into problems with nested application of the
 functor.
+
+\newpage
+
+\section{Appendix}
+
+Printing the appendix is encouraged to use as a template for working
+through examples.
+
+\begin{figure*}
+\begin{center}
+\scalebox{2}{
+\input{2opticcomp.tikz}
+}
+\end{center}
+\caption{Composition rule for 2-optics (larger version)}
+\end{figure*}
+
+
+\begin{figure*}
+    \begin{center}
+        \begin{tikzpicture}[on grid]
+
+        \node[vert] (lll) at (0, 0) {$l_{l_l}$};
+        \node[vert, below=4 of lll] (lll') {$l_{l_l}^\prime$};
+
+        \foreach \p in {,'} {
+            \newcommand{\A}{\ifdefempty{\p}{A}{B}}
+            \newcommand{\B}{\ifdefempty{\p}{B}{C}}
+
+            \node[vert, right=2.3 of lll\p, yshift=-4mm] (rll\p) {$r_{l_l}\p$};
+            \node[vert, right=2.3 of rll\p, yshift=-4mm] (rlr\p) {$r_{l_r}\p$};
+            \node[vert, right=2.3 of rlr\p, yshift=-4mm] (llr\p) {$l_{l_r}\p$};
+
+            \node[vert, right=16 of lll\p] (lrl\p) {$l_{r_l}\p$};
+            \node[vert, left=2.3 of lrl\p, yshift=-4mm] (rrl\p) {$r_{r_l}\p$};
+            \node[vert, left=2.3 of rrl\p, yshift=-4mm] (rrr\p) {$r_{r_r}\p$};
+            \node[vert, left=2.3 of rrr\p, yshift=-4mm] (lrr\p) {$l_{r_r}\p$};
+
+            \node (A1\p) [left=0.8 of lll\p] {$\A_1$};
+            \node (A2\p) [right=0.8 of lrl\p] {$\A_2$};
+
+            \node (B1\p) [below right=0.7 and 0.75 of lll\p] {$\B_1$};
+            \node (B5\p) [right=0.7 of B1\p] {$\B_5$};
+
+            \node (A5\p) [below right=0.7 and 0.75 of rll\p] {$\A_5$};
+            \node (A7\p) [right=0.7 of A5\p] {$\A_7$};
+
+            \node (B7\p) [below right=0.7 and 0.75 of rlr\p] {$\B_7$};
+            \node (B3\p) [right=0.7 of B7\p] {$\B_3$};
+
+            \node (A3\p) [below right=0.7 and 0.75 of llr\p] {$\A_3$};
+            \node (A4\p) [right=0.7 of A3\p] {$\A_4$};
+
+            \node (B8\p) [below left=0.7 and 0.8 of rrr\p] {$\B_8$};
+            \node (B4\p) [left=0.7 of B8\p] {$\B_4$};
+
+            \node (A6\p) [below left=0.7 and 0.8 of rrl\p] {$\A_6$};
+            \node (A8\p) [left=0.7 of A6\p] {$\A_8$};
+
+            \node (B2\p) [below left=0.7 and 0.8 of lrl\p] {$\B_2$};
+            \node (B6\p) [left=0.7 of B2\p] {$\B_6$};
+
+            \ifdefempty{\p}{}{
+                \node[draw,dashed,fit=(B1\p) (B5\p), inner xsep = 2pt] (box1\p) {};
+                \node[draw,dashed,fit=(B7\p) (B3\p), inner xsep = 2pt] (box3\p) {};
+                \node[draw,dashed,fit=(B4\p) (B8\p), inner xsep = 2pt] (box5\p) {};
+                \node[draw,dashed,fit=(B6\p) (B2\p), inner xsep = 2pt] (box7\p) {};
+            };
+
+            \ifdefempty{\p}{
+                \node[draw,dashed,fit=(A5\p) (A7\p), inner xsep = 2pt] (box2\p) {};
+                \node[draw,dashed,fit=(A3\p) (A4\p), inner xsep = 2pt] (box4\p) {};
+                \node[draw,dashed,fit=(A8\p) (A6\p), inner xsep = 2pt] (box6\p) {};
+            }{};
+
+
+            \draw [->] (A1\p) -- (lll\p);
+            \draw [->] (lrl\p) -- (A2\p);
+
+            \foreach \s/\t/\l in {lll\p/rll\p/$M_{1}\p$,
+                                  rll\p/rlr\p/${M_{r_{\mathcal{O}}}}\p$,
+                                  rlr\p/llr\p/$M_{3}\p$} {
+                \draw [->] (\s) -- ++(1.8,0) node[midway, fill=white] {\l} to[out=east, in=north west] (\t);
+            }
+
+            \foreach \s/\t/\l in {lrr\p/rrr\p/$M_{4}\p$,
+                                  rrr\p/rrl\p/${M_{r_{\mathcal{O}}}^\prime}\p$,
+                                  rrl\p/lrl\p/$M_{2}\p$} {
+                \draw [->] (\s) to[out=north east, in=west] ($(\t)-(1.8,0)$) -- node[midway, fill=white] {\l} (\t);
+            }
+
+            \draw[->] (rll\p) to[out=north east, in=west] ++(1,0.5)
+             -- ++(9.5,0) node[midway,fill=white] {$M_{r_l}\p$}
+             to[out=east, in=north west] (rrl\p)
+            ;
+
+            \draw[->] (rlr\p) to[out=north east, in=west] ++(1,0.4)
+            -- ++(5,0) node[midway,fill=white] {$M_{r_r}\p$}
+            to[out=east, in=north west] (rrr\p)
+           ;
+
+
+            \draw[->] (lll\p) to[out=north east, in=west] ++(1,0.9)
+             -- ++(14,0) node[midway,fill=white] {$M_{l_l}\p$}
+             to[out=east, in=north west] (lrl\p)
+            ;
+
+            \draw[->] (lll\p) to[out=north east, in=west] ++(1,0.5)
+             -- ++(4,0) node[midway,fill=white] {$M_{l_\mathcal{O}}\p$}
+             to[out=east, in=north west] (llr\p)
+            ;
+
+            \draw[->] (llr\p) -- (lrr\p) node[midway,fill=white] {$M_{l_r}\p$};
+
+            \draw [->] (lrr\p) to[out=north east, in=west] ($(lrl\p)-(5,-0.5)$) -- ++(4,0) node[midway, fill=white] {${M_{l_\mathcal{O}}^\prime}\p$} to[out=east, in=north west] (lrl\p);
+
+            \foreach \s/\t in {lll/B1, rll/A5, rlr/B7, llr/A3, lrr/B4, rrr/A8, rrl/B6} {
+                \draw[->] (\s\p) to[out=south east, in=west] (\t\p);
+            }
+
+            \foreach \s/\t in {B5/rll, A7/rlr, B3/llr, A4/lrr, B8/rrr, A6/rrl, B2/lrl} {
+                \draw[->] (\s\p) to[out=east, in=south west] (\t\p);
+            }
+        }
+
+        \draw [->,thick,color=red] (B1) to[out=south west, in=north] (A1');
+        \draw [->,thick,color=red] (B7) to[out=south west, in=north] (A7');
+        \draw [->,thick,color=red] (B4) to[out=south west, in=north] (A4');
+        \draw [->,thick,color=red] (B6) to[out=south west, in=north] (A6');
+
+        \draw [->,thick,color=red] (A5') to[out=north, in=south] (B5);
+        \draw [->,thick,color=red] (A3') to[out=north, in=south] (B3);
+        \draw [->,thick,color=red] (A8') to[out=north, in=south] (B8);
+        \draw [->,thick,color=red] (A2') to[out=north, in=south] (B2);
+
+    \end{tikzpicture}
+    \end{center}
+    \caption{Composition rule for 3-optics}
+    \label{fig:3opticcomp}
+\end{figure*}
 
 \bibliographystyle{IEEEtran}
 \bibliography{IEEEabrv,terminology}{}
