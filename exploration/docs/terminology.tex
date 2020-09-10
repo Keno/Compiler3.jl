@@ -62,7 +62,7 @@
 \DeclareUnicodeCharacter{2A1F}{\ensuremath{\bbsemi}}
 
 \newenvironment{snippet}{
-    \VerbatimEnvironment\begin{minted}[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos, label=Snippet \arabic{snippet}, labelposition=topline]{julia}}{\end{minted}\addtocounter{snippet}{1}}
+    \VerbatimEnvironment\begin{minted}[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos, label=Snippet \arabic{snippet}, labelposition=topline, escapeinside=||, mathescape=true]{julia}}{\end{minted}\addtocounter{snippet}{1}}
 
 \title{\LARGE \bf
 $\partial P$.jl\footnote{Working name} terminology and notation guide}
@@ -135,8 +135,8 @@ While these definitions are perfectly explicit, it might be easier to understand
 what is going on by considering optics diagramatically (diagrams taken from Riley\cite{riley:optics}).
 For $\langle l | r \rangle$ we draw:
 
-\begin{center}
-\begin{tikzpicture}
+\begin{equation}
+\begin{tikzpicture}[baseline=(S)]
     \node[vert] (l) at (0, 0) {$l$};
     \node[vert] (r) at (4, 0) {$r$};
 
@@ -159,14 +159,14 @@ For $\langle l | r \rangle$ we draw:
     \node[draw,dashed,fit=(A) (A'), inner xsep = 8pt] (box) {};
     \draw[dashed] (box.90) -- +(0,2.25);
 \end{tikzpicture}
-\end{center}
+\end{equation}
 
 We compose these optics by inserting one optic in the hole of another, e.g.
 for the composition we have above, we might write
 $\langle l_1 | r_1 \rangle \bbsemi \langle l_2 | r_2 \rangle$
 
-\begin{center}
-    \begin{tikzpicture}
+\begin{equation}
+    \begin{tikzpicture}[baseline=(R)]
         \begin{scope}[on grid]
 
         \node[vert] (l') at (0, 0) {$l_1$};
@@ -203,14 +203,14 @@ $\langle l_1 | r_1 \rangle \bbsemi \langle l_2 | r_2 \rangle$
         \node[draw,dashed,fit=(A) (A'), inner xsep = 8pt] (box) {};
         \end{scope}
         \end{tikzpicture}
-\end{center}
+\end{equation}
 
 From the diagrammatic view, it is immediately clear that this composition
 is indeed another optic and what the composition rule for these optics should
 be:
 
-\begin{center}
-    \begin{tikzpicture}
+\begin{equation}
+    \begin{tikzpicture}[baseline=(R)]
         \begin{scope}[on grid]
 
         \node[vert] (l_1) at (0, 0) {};
@@ -248,7 +248,7 @@ be:
         \node[draw,dashed,fit=(C) (C'), inner xsep = 8pt] (box) {};
         \end{scope}
         \end{tikzpicture}
-\end{center}
+\end{equation}
 
 The reader is encouraged to verify that this diagrammatic derivation of $l_{12}$
 and $r_{12}$ matches the algebraic definition above.
@@ -404,7 +404,7 @@ form, we may have an arbitrary number of uses. To support this, we extend our
 category with the diagonal $\Delta_{SSA}: A \to A \otimes A$) and deletion ($\dashv: A \to I$) morphisms.
 Graphically, we have:
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[baseline=(A1), on grid]
         \node[] (A1) at (0, 0) {A};
         \node[right of=A1] (C) {};
@@ -418,7 +418,7 @@ Graphically, we have:
         \node[circle,right of=A1, fill=black] (T) {};
         \draw[->] (A1) -- (T);
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 \subsection{Forward control flow}
 
@@ -430,8 +430,8 @@ indicate $\oplus$ by boxes around the operations in questions, so for example,
 for the morphism $(f \oplus g) \otimes h: (A \oplus B) \otimes C \to (A^\prime \oplus B^\prime) \otimes C^\prime$,
 we will draw:
 
-\begin{center}
-    \begin{tikzpicture}[baseline=(A1), on grid]
+\begin{equation}
+    \begin{tikzpicture}[baseline=(B), on grid]
         \node[] (A) {A};
         \node[below of=A] (B) {B};
         \node[below of=B] (C) {C};
@@ -447,11 +447,11 @@ we will draw:
         \node[draw,dotted,fit=(A) (A') (B) (B'), inner sep = 1pt] (AA) {};
         \draw[dotted] (AA.west) -- (AA.east) {};
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 Now, we have an operation $\varphi: A \oplus A \to A$, that joins control flow edges:
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[baseline=(A1), on grid]
         \node[] (A1) {A};
         \node[circle, draw, left of=A1] (C) {$\varphi$};
@@ -463,12 +463,12 @@ Now, we have an operation $\varphi: A \oplus A \to A$, that joins control flow e
         \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
         \draw[dotted] (AA.west) -- (AA.east) {};
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 and we will introduce an additional "conditonal branch" operation $br: A \otimes C \to A \oplus A$ (where we say $C$
 is the condition):
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[baseline=(A1), node distance = 3em and auto, on grid]
         \node[] (A1) at (0, 0) {A};
         \node[right of=A1, fill=black] (C) {};
@@ -481,11 +481,11 @@ is the condition):
         \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
         \draw[dotted] (AA.west) -- (AA.east) {};
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 We further impose the following \textit{co-predication relation}:
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[baseline=(Cond), node distance = 3em and auto, on grid]
         \node[] (A1) at (0, 0) {A};
         \node[right of=A1, fill=black] (CA) {};
@@ -506,7 +506,7 @@ We further impose the following \textit{co-predication relation}:
         \draw[dotted] (AA.west) -- (AA.east) {};
         \node[draw,dotted,fit=(B2)(B3), inner sep = 2pt] (BB) {};
         \draw[dotted] (BB.west) -- (BB.east) {};
-    \end{tikzpicture} \hspace{2em} $\cong$ \hspace{2em}
+    \end{tikzpicture} \hspace{1em}\cong
     \begin{tikzpicture}[baseline=(A1), node distance = 3em and auto, on grid]
         \node[] (A1) at (0, 0) {$A\otimes B$};
         \node[right of=A1, fill=black] (C) {};
@@ -519,7 +519,7 @@ We further impose the following \textit{co-predication relation}:
         \node[draw,dotted,fit=(A2)(A3), inner sep = 2pt] (AA) {};
         \draw[dotted] (AA.west) -- (AA.east) {};
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 As a notational convenience, we write $\oplus_c$ for the coproduct introduced
 under some abstract condition $c$. In that case, we may write the co-predication
@@ -567,25 +567,30 @@ co-product itself. For two optics $\langle l_1 | r_1 \rangle: (A, A') \to (B, B'
 with residual $M_1$ and $\langle l_2 | r_2 \rangle: (C, D') \to (D, D')$ with residual $M_2$,
 we construct a new optic $\langle l_{12} | r_{12} \rangle$ where
 
-\[
-l_{12} = (l_1 \oplus l_2) \bbsemi \leftrightarrow_{oplus}
-\]\[
+\begin{equation}
+\begin{split}
+l_{12} = (l_1 \oplus l_2) \bbsemi \leftrightarrow_{oplus} \\
 r_{12} = \leftrightarrow_{oplus}^{-1} \bbsemi (r_1 \oplus r_2)
-\]
+\end{split}
+\end{equation}
 
 Similarly, we can confirm that this is indeed a coproduct by exhibting the $\varphi$
 morphism. The trick here is to use the
 residual to carry the branch history information. Perhaps the simplest
 representative of $\text{Optic}(\varphi): (A \oplus_a A, A' \oplus_a A') \to (A, A')$ would be $\langle l | r \rangle$ where
-\[
-l = \Delta_{SSA} \bbsemi (\text{id}_{A \oplus_a A} \otimes \varphi) \]\[
-r = d \bbsemi (\pi_2 \oplus \pi_2)
-\]
+
+\begin{equation}
+\begin{split}
+l &= \Delta_{SSA} \bbsemi (\text{id}_{A \oplus_a A} \otimes \varphi) \\
+r &= d \bbsemi (\pi_2 \oplus \pi_2)
+\end{split}
+\end{equation}
+
 where $d$ is the distributive map. While this may be a little abstract, hopefully
 it becomes clear as a picture:
 
-\begin{center}
-    \begin{tikzpicture}
+\begin{equation}
+    \begin{tikzpicture}[baseline=(S2)]
         \node (l) at (0, 0) {};
 
         \node (S1) [above left=0 and 0.2 of l.center,label=left:A,minimum height=2em] {};
@@ -616,7 +621,7 @@ it becomes clear as a picture:
         \draw[dotted] (AA.west) -- (AA.east) {};
 
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 Note that another representative of the same optic could simply record the
 active component (e.g. by using the map $(x \to 1) \oplus (y \to 2)$ and
@@ -708,7 +713,7 @@ a flat $30\%$ profit margin. We will use the continuation
 encoding of the optic to specify the value of $\textbf{\euro{}}$ on each of our
 primitives:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 |$\textbf{\euro{}}$|A(price, sweat) = let cost=|$10$|;
   (price + cost, A(sweat)),
     profit->(profit - cost * 1.3)
@@ -717,7 +722,7 @@ end
   (price + cost, B(love)),
     profit->(profit - cost * 1.3)
 end
-\end{minted}
+\end{snippet}
 
 $C$ is a little more tricky. For $C$, we have two arguments, so on right side
 of the optic, we need to produce two outputs. There are several ways to model
@@ -727,13 +732,13 @@ unpacking, or we could simply require the output to always be a tuple whose
 length matches the original number of arguments. Here we pick the latter
 encoding and write:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 |$\textbf{\euro{}}$|C(aprice, bprice, a, b) = let cost=|$30$|;
   (aprice + bprice + cost, C(a, b)),
     profit->(take(profit, aprice),
              take(profit, bprice))
 end
-\end{minted}
+\end{snippet}
 
 Ok, phew that was a bit of work to figure out all the primitives. However, now
 that this is done, we do get some reward for our efforts. We get the definition
@@ -744,7 +749,7 @@ functor law, we immediately get that $\textbf{\euro{}}widget = (\textbf{\euro{}}
 By tracing through definitions, we can write out an explicit representative in
 the continuation encoding:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 function |\textbf{\euro{}}|widget(sweat_cost, love_cost, sweat, love)
   aprice, |$a$|, |$a^\star$| = |\textbf{\euro{}}A|(sweat_cost, sweat)
   bprice, |$b$|, |$b^\star$| = |\textbf{\euro{}}B|(love_cost, love)
@@ -756,7 +761,7 @@ function |\textbf{\euro{}}|widget(sweat_cost, love_cost, sweat, love)
     (|$\text{sweat}^\dagger$|, |$\text{love}^\dagger$|)
   end
 end
-\end{minted}
+\end{snippet}
 
 Now, this might seem a bit complicated (and it is), but that is precisely the
 point. Writing this out explicitly is quite tedious, but there are no choices
@@ -828,52 +833,52 @@ require a license for JuliaPro), and that Dave produces such an input.
 For simplicity, we will also drop Alice and Bob's other inputs. We have a new
 program:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 function clonewidget()
     d = D()
     a = A(d)
     b = B(d)
     c = C(a, b)
 end
-\end{minted}
+\end{snippet}
 
 Let us look at some sensible policy choices\footnote{Welcome to Copyright 101 - Today's topic: Category theory.} we might make.
 For example, we could decide that David gets to decide what to charge for each copy of `d':
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 function |$\textbf{\euro{}}$|clone(dprice, d)
     (dprice, dprice), (d, d),
     (profit₁, profit₂)->(profit₁ + profit₂)
 end
-\end{minted}
+\end{snippet}
 
 or maybe everybody pays a fixed fee, independent of David's costs:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
-    function |$\textbf{\euro{}}$|clone(dprice, d)
-        (1, 1), (d, d),
-        (profit₁, profit₂)->(profit₁ + profit₂)
-    end
-\end{minted}
+\begin{snippet}
+function |$\textbf{\euro{}}$|clone(dprice, d)
+    (1, 1), (d, d),
+    (profit₁, profit₂)->(profit₁ + profit₂)
+end
+\end{snippet}
 
 or maybe everybody pirates his music and David gets payed nothing:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 function |$\textbf{\euro{}}$|clone(dprice, d)
     (0, 0), (d, d),
     (profit₁, profit₂)->0
 end
-\end{minted}
+\end{snippet}
 
 or maybe the participants of our economy are playing hot potato, and always
 exactly one of the participants needs to pay:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 function |$\textbf{\euro{}}$|clone(dprice, d)
     rand(Bool) ? (dprice, 0) : (0, dprice), (d, d),
     (profit₁, profit₂)->(profit₁ + profit₂)
 end
-\end{minted}
+\end{snippet}
 
 However, note that while this is a valid definition under our definition of
 an optic functor, applying $textbf{\euro{}}$ now leads to accumulation order
@@ -889,12 +894,12 @@ Like copy, we have some freedom what do here. For our example, it would probably
 make sense to dynamically disallow deleting objects that have a non-zero price,
 so we might write:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside='',mathescape=true]{julia}
-function '$\textbf{\euro{}}$'delete(dprice, d)
-    dprice == 0 || error("Who's gonna pay for that?")
+\begin{snippet}
+function |$\textbf{\euro{}}$|delete(dprice, d)
+    dprice != 0 && error("Who's gonna pay for that?")
     ()->(0,)
 end
-\end{minted}
+\end{snippet}
 
 \subsubsection{Branch}
 
@@ -905,7 +910,7 @@ behaviors. For example suppose we wanted to proportionately assign to each
 input. We might write something like (encoding for the branch functor is
 slightly tricky, this is one example):
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true]{julia}
+\begin{snippet}
 function |$\textbf{\euro{}}$|branch(aprices, cprice, as, c)
     # Smear the cost of `c' proportionately
     total_a = sum(aprices)
@@ -914,7 +919,7 @@ function |$\textbf{\euro{}}$|branch(aprices, cprice, as, c)
         (profit - cprice), cprice
     end
 end
-\end{minted}
+\end{snippet}
 
 However, as with the prior discussion, this would not match standard ssa behavior
 (i.e. programs equivalent under SSA would not longer be equivalent when lifted).
@@ -928,9 +933,9 @@ $C^\infty(M)$ the space of smooth functions on $M$. A tangent vector $\nu$ to $M
 at $a$ is an $\mathbb{R}$-linear derivation from $C^\infty(M)$ into $\mathbb{R}$,
 i.e. a function from $C^\infty(M) \to \mathbb{R}$ satisfying:
 
-\[
+\begin{equation}
 \nu(f \cdot g)(x) = g(a)\cdot \nu(f) + f(a) \cdot \nu(g)
-\]
+\end{equation}
 
 The collection of all tangent vectors to $M$ at $a$ form a vector space, called
 the tangent space to $M$ at $a$, $T_a M$. Additionally, if we glue all these
@@ -942,31 +947,31 @@ Sections of the cotangent bundle are also called differential 1-forms.
 If we have a function between manifolds, say $f: M \to N$, we obtain a pushforward
 of tangent spaces: $f_\star: T_M \to T_N$ given by:
 
-\[
+\begin{equation}
 (f_\star \nu) g = \nu(g \circ f)
-\]
+\end{equation}
 
 (for $g: C^\infty(M)$), as well as a pullback of cotangent spaces $f^\star: T^\star N \to T^\star M$
 given by
 
-\[
+\begin{equation}
 (f^\star dx) \nu = dx(f_\star \nu)
-\]
+\end{equation}
 
 These notions are generalizations of some of the standard notions of derivatives
 that may be familiar from multivariable calculus. Suppose $f: \R^n \to \R^m$,
 Let $\pi_i$ be the component projection function. We obtain a canonical basis,
 of the tangent space $T \R^n$ given by the unique functions such that
-\[
+\begin{equation}
 \nu_i (\pi_j) = i == j
-\]
+\end{equation}
 And similarly for the cotangent space.
 
 Now the Jacobian $J f$ defined by
 
-\[
+\begin{equation}
 (J f)_{ij} = \frac{\partial f_i}{\partial x_j}
-\]
+\end{equation}
 
 is just matrix obtained by pushing forward the standard basis fo $T \R^n$ using
 $f_\star$. Equivalently, it is the transpose of the pullback of the standard
@@ -992,8 +997,8 @@ p \langle l | r \rangle f = l \bbsemi (id_M \otimes f) \bbsemi r
 or graphically by assigning to a morphism $f \in \Hom(B, B^\prime)$ the morphism
 obtained by plugging $f$ into the "hole" of the optic:
 
-\begin{center}
-    \begin{tikzpicture}
+\begin{equation}
+    \begin{tikzpicture}[baseline=(S)]
         \node[vert] (l) at (0, 0) {$l$};
         \node[vert] (r) at (4, 0) {$r$};
 
@@ -1017,7 +1022,7 @@ obtained by plugging $f$ into the "hole" of the optic:
 
         \draw[->] (A) -- (f) -- (A');
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 
 \subsection{Higher order optics}
@@ -1037,27 +1042,28 @@ Then a representative of the optic morphisms
 $\Optic\left(\left(\begin{array}{cc} (A_1 & A_2) \\ (A_3 & A_4) \end{array}\right),
 \left(\begin{array}{cc} (B_1 & B_2) \\ (B_3 & B_4) \end{array}\right)\right)$,
 is a pair of optics $\langle \mathcal{O}_l | \mathcal{O}_r \rangle$ where
-\[
+\begin{equation}
+\begin{split}
 \mathcal{O}_l \in \Optic\left(\left( \begin{array}{c} A_1 \\ A_2 \end{array} \right),
 \left( \begin{array}{c} M_\mathcal{O} \\ M_\mathcal{O}^\prime \end{array} \right) \otimes
 \left( \begin{array}{c} B_1 \\ B_2 \end{array} \right)
 \right)
-\]
-\[
+\\
 \mathcal{O}_r \in \Optic\left(
 \left( \begin{array}{c} M_\mathcal{O} \\ M_\mathcal{O}^\prime \end{array} \right) \otimes
 \left( \begin{array}{c} B_3 \\ B_4 \end{array} \right),
 \left( \begin{array}{c} A_4 \\ A_4 \end{array} \right)
 \right)
-\]
+\end{split}
+\end{equation}
 
 . We take representatives $\langle l_l | r_l \rangle$ of $\mathcal{O}_l$
 and $\langle l_r | r_r \rangle$ of $\mathcal{O}_r$ with residuals $M_l$ and $M_r$
 respectively. Writing the morphisms out algebraically is a bit confusing, so
 let's look at the graphical representation:
 
-\begin{center}
-    \begin{tikzpicture}[on grid]
+\begin{equation}
+    \begin{tikzpicture}[on grid, baseline=(ll)]
         \node[vert] (ll) at (0, 0) {$l_l$};
         \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$l_r$};
         \node[vert, right=7 of ll] (rr) {$r_l$};
@@ -1100,7 +1106,7 @@ let's look at the graphical representation:
          to[out=east, in=north west] (rr)
         ;
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 Here the dashed line plays the same role it did in the original diagram of
 the optic: To compose optics, we "slice" along the dashed line and insert
@@ -1109,9 +1115,9 @@ we will first look at two diagrams stacked on top of each other using the
 same structure as in the previous diagram, to make the flow of operations
 obvious.
 
-\begin{center}
+\begin{equation}
 \input{2opticcomp.tikz}
-\end{center}
+\end{equation}
 
 We can relayout this to make the four segments more obvious. This is done in
 figure \ref{2comphor}. Now, if $\euro{}: \mathcal{C} \to \Optic_\mathcal{C}$ is an
@@ -1130,7 +1136,7 @@ For completeness, let us repeat this diagram, making use of the notation we esta
 above for optic obtained from optic functors:
 
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[on grid]
         \node[vert] (ll) at (0, 0) {$\euro \euro f$};
         \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$\euro(f^\star)$};
@@ -1173,7 +1179,7 @@ above for optic obtained from optic functors:
          to[out=east, in=north west] (rr)
         ;
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 \begin{figure*}
     \begin{center}
@@ -1252,7 +1258,7 @@ For completeness, let us proceed for one more step and explicitly draw a 3-optic
 As before, we have a pair of two 2-optics:
 
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[on grid]
         \node[vert] (ll) at (0, 0) {$l_{l_l}$};
         \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$l_{l_r}$};
@@ -1305,9 +1311,9 @@ As before, we have a pair of two 2-optics:
          to[out=east, in=north west] (rr)
         ;
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[on grid]
         \node[vert] (ll) at (0, 0) {$r_{l_l}$};
         \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {$r_{l_r}$};
@@ -1357,7 +1363,7 @@ As before, we have a pair of two 2-optics:
          to[out=east, in=north west] (rr)
         ;
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 Now, writing down the 3-optic is simply a matter of matching up the $M$s, and
 setting corresponding gaps opposite each other. This is done in figure \ref{fig:3optic}.
@@ -1495,9 +1501,9 @@ pullbacks of differential forms has the structure of an optic. As a concrete
 example, suppose we wanted to compute the gradient $\nabla f$. Tracing through our
 definitions above, we find that:
 
-\[
+\begin{equation}
 \nabla f (x) = f^\star(dx_1(f(x)))
-\]
+\end{equation}
 
 so two evaluate this function we first have a covariant evaluation of $f$,
 followed by a contravariant evaluation of $f^\star$. Now for the formal construction:
@@ -1509,9 +1515,9 @@ language does not care about such things, we're happy to cheat an let others wor
 that pairs to each manifold its
 tangent bundle. Now, guided by the above, we defined a functor:
 
-\[
+\begin{equation}
 \overleftarrow{\partial} f: \mathcal{C} \to \Optic_{\mathcal{C}}(T^\star M)
-\]
+\end{equation}
 
 where as indicated, $\overleftarrow{\partial} M = T^\star M$ and on morphisms
 $\overleftarrow{\partial} f = \langle (a\to(a,f(a)), (a, z) \to f^\star|_{a}(z) \rangle$.
@@ -1522,13 +1528,13 @@ There is very little left to do at this point, but our program above did teach
 us that we need to define a few things:
 
 For copy, we simply write
-\[
-    \overleftarrow{\partial} copy(x) = (x, x), (\Delta_1, \Delta_2) \to \Delta_1 + \Delta_2
-\]
+\begin{equation}
+\overleftarrow{\partial} copy(x) = (x, x), (\Delta_1, \Delta_2) \to \Delta_1 + \Delta_2
+\end{equation}
 which is the unique map that preserves linear of the pullback. For delete:
-\[
+\begin{equation}
     \overleftarrow{\partial} delete(x) = ()\to 0
-\]
+\end{equation}
 For branch we have a choice. We could either inherit the behavior from delete
 or return a poison value on the backwards pass. This is a user level policy decision.
 
@@ -1544,7 +1550,7 @@ One straightforward way to obtain the higher order transform is to simply
 treat the encoded optic as yet another SSA program.
 As an example, we may explicitly do the transform $\overleftarrow{\partial} \overleftarrow{\partial} \text{sin}$:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+\begin{snippet}
 function |$\overleftarrow{\partial} \overleftarrow{\partial}$|sin(x)
     sin(x), |$\Delta$|->begin
         |$\Delta$| * cos(x), |$\Delta'$|->begin
@@ -1554,11 +1560,11 @@ function |$\overleftarrow{\partial} \overleftarrow{\partial}$|sin(x)
         |$\Delta''$|*cos(x) + |$\Delta'''$|
     end
 end
-\end{minted}
+\end{snippet}
 
 Recall from above the diagram for an optic functor
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[on grid]
         \node[vert] (ll) at (0, 0) {\tiny{$\overleftarrow{\partial} \overleftarrow{\partial} f$}};
         \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {\tiny{$\overleftarrow{\partial}(f^\star)$}};
@@ -1601,7 +1607,7 @@ Recall from above the diagram for an optic functor
          to[out=east, in=north west] (rr)
         ;
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 We can identify the various arrows with concrete values in the program:
 
@@ -1625,7 +1631,7 @@ $B'$ & $\Delta''$
 In particular, if we are taking the second derivative of sin, here is the
 dataflow path of the final answer:
 
-\begin{center}
+\begin{equation}
     \begin{tikzpicture}[on grid]
         \node[vert] (ll) at (0, 0) {\tiny{$\overleftarrow{\partial} \overleftarrow{\partial} f$}};
         \node[vert, right=2.3 of ll, yshift=-4mm] (lr) {\tiny{$\overleftarrow{\partial}(f^\star)$}};
@@ -1664,7 +1670,7 @@ dataflow path of the final answer:
          to[out=east, in=north west] (rr)
         ;
     \end{tikzpicture}
-\end{center}
+\end{equation}
 
 For a more complex example, the same transform is done for a third order
 transform in the Appendix (figure \ref{3-ordernaive}).
@@ -1681,11 +1687,13 @@ look like a capture. This shows up more at third order. To see what I mean
 when I say control-flow is non-transparent, consider the order in which the
 functions are called at third order:
 \newcommand{\op}{\overleftarrow{\partial}}
-\[
-\op\op f, \op \op \left( f^\star \right), \op \left( f^{\star\star} \right), \op \left( \left( \op f\right)^{\star} \right),
-\]\[
+
+\begin{equation}
+\begin{split}
+\op\op f, \op \op \left( f^\star \right), \op \left( f^{\star\star} \right), \op \left( \left( \op f\right)^{\star} \right), \\
 \left( \op f\right)^{\star\star}, f^{\star\star\star}, \left( \op \left( f^\star \right) \right)^{\star}, \left( \op \op f\right)^{\star}
-\]
+\end{split}
+\end{equation}
 
 (if it's not clear how to come up with this order, simply look at the second
 order diagram, add $\op$ in front of everything, then reverse the diagram,
@@ -1698,7 +1706,7 @@ Let's take a clue from the diagrams we've been working with, which do make the
 control flow order manifestly clear. What if instead of our second order example
 above, we wrote it as:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+\begin{snippet}
 function |$\partial^2$|sin(x)
     sin(x), |$\Delta$|->begin
         |$\Delta$| * cos(x), |$\Delta'$|->begin
@@ -1708,7 +1716,7 @@ function |$\partial^2$|sin(x)
         end
     end
 end
-\end{minted}
+\end{snippet}
 
 This avoids the two problems identified above: The $\Delta'''$ becomes an
 explicit capture and the order of operations becomes quite clear
@@ -1717,18 +1725,18 @@ is a bit of a re-think of the standard transform, but it is entirely equivalent.
 To get more familiar with it, let's say, we'd like to take the third order transform
 of the following functions:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+\begin{snippet}
 function f(x)
     y = g(x)
     z = h(y)
     return z
 end
-\end{minted}
+\end{snippet}
 
 We would have:
 
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+\begin{snippet}
 function |$\op^3$|f(x)
   |$y$|, |$\overline{y}$| = |$\op^3$|g(x)
   |$z$|, |$\overline{z}$| = |$\op^3$|h(y)
@@ -1766,14 +1774,14 @@ function |$\op^3$|f(x)
     end
   end
 end
-\end{minted}
+\end{snippet}
 
 We see still have the same number of functions, so the complexity isn't
 reduced, but at least it's fairly orderly. We do have to take special care of
 primitives, because we're no longer just applying the same transformation to
 the rule function itself. So suppose we have some primitive rule like:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+\begin{snippet}
 struct |$\nabla a$|
     x
 end
@@ -1783,14 +1791,14 @@ function rrule(::typeof(a), x)
     b(x), |$\nabla a$|(x)
 end
 
-\end{minted}
+\end{snippet}
 
 For the first order, we would just expose the raw pullback as we do with
 the naive transform. However, for second order, things become slightly more
 complicated:
 
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+\begin{snippet}
 function |$\op^2 a$|(x)
     (|$y$|, |$\overline{y}$|), |$\overline{\overline{y}}$| = |$\op \text{rrule}$|(a, x)
     |$y$|, |$\Delta$|->begin
@@ -1805,7 +1813,7 @@ function |$\op^2 a$|(x)
         end
     end
 end
-\end{minted}
+\end{snippet}
 
 It's worth comparing this with the explicitly written out and inlined version of
 sin above (which is a primitive).
@@ -1813,7 +1821,7 @@ sin above (which is a primitive).
 It's also worth taking a look at the third order version of that example to see
 the generalizing pattern:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+\begin{snippet}
 function |$\op^3 a$|(x)
     (|$y$|, |$\overline{y}$|), |$\overline{\overline{y}}$| = |$\op^2 \text{rrule}$|(a, x)
     |$y$|, |$\Delta$|->begin
@@ -1838,7 +1846,7 @@ function |$\op^3 a$|(x)
         end
     end
 end
-\end{minted}
+\end{snippet}
 
 If this structure seems familiar, it should! In our $3$-optic diagram we
 build $3$-optics as pairs of $2$-optics that composed in a canonical way.
@@ -1853,18 +1861,18 @@ the inverse of the rrule case above. In particular, we're adapting an $n+1$
 optic to an $n$ optic by appropriate interleaving. Suppose we have a primal
 function $\nabla$ given by:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+\begin{snippet}
 function |$\nabla$|(f, x)
     (|$a$|, |$\overline{a}$|) = |$\op$|(f, x)
     |$y$| = g(a)
     |$z$| = |$\overline{a}$|(y)
     return |$z$|
 end
-\end{minted}
+\end{snippet}
 
 Applying our transform, we get:
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+\begin{snippet}
 function |$\op\nabla$|(f, x)
     (|$a$|, |$\overline{a}$|) = |$\op^2$|(f, x)
     |$y$|, |$\overline{y}$| = |$\op g$|(a)
@@ -1876,13 +1884,13 @@ function |$\op\nabla$|(f, x)
         return |$\epsilon$|
     end
 end
-\end{minted}
+\end{snippet}
 
 Note that we went through all four callbacks of the $2$-optic $\op^2(f, x)$,
 even though the top level optic only had two callbacks. For completeness,
 here is the third order version (second order transform):
 
-\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+\begin{snippet}
 function |$\op^2\nabla$|(f, x)
     (|$a$|, |$\overline{a}$|) = |$\op^3$|(f, x)
     |$y$|, |$\overline{y}$| = |$\op g$|(a)
@@ -1904,7 +1912,7 @@ function |$\op^2\nabla$|(f, x)
         end
     end
 end
-\end{minted}
+\end{snippet}
 
 \section{Implementation details}
 
