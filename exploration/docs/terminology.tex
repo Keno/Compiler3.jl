@@ -46,6 +46,8 @@
       mark=at position #1 with {\arrow{>}}},postaction={decorate}}}
 
 \newtheorem{definition}{Definition}[paragraph]
+\newcounter{snippet}
+\setcounter{snippet}{1}
 \newcommand{\Optic}{\textbf{Optic}}
 \newcommand{\hto}{\ensuremath{\,\mathaccent\shortmid\rightarrow\,}}
 \newcommand{\id}{\text{id}}
@@ -58,6 +60,9 @@
 \DeclareUnicodeCharacter{2081}{\ensuremath{_1}}
 \DeclareUnicodeCharacter{2082}{\ensuremath{_2}}
 \DeclareUnicodeCharacter{2A1F}{\ensuremath{\bbsemi}}
+
+\newenvironment{snippet}{
+    \VerbatimEnvironment\begin{minted}[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos, label=Snippet \arabic{snippet}, labelposition=topline]{julia}}{\end{minted}\addtocounter{snippet}{1}}
 
 \title{\LARGE \bf
 $\partial P$.jl\footnote{Working name} terminology and notation guide}
@@ -258,17 +263,18 @@ not concern ourselves with a precise definition. We begin by defining an
 abstract optic type as well as a concrete representation of morphisms as pairs
 $\langle l | r \rangle$:
 
-\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}{opticdef.jl}
+\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos, label={Snippet \arabic{snippet}}, labelposition=topline]{julia}{opticdef.jl}
+\addtocounter{snippet}{1}
 
 Given these definitions, we can now define an optic constructor that allows us
 to modify an immutable value at a given location:
 
-\begin{minted}[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}
+\begin{snippet}
 SetIndex(idx) = OpticRepr(
     obj->(obj, getindex(obj, idx)),
     (obj, update)->setindex(obj, update, idx)
 )
-\end{minted}
+\end{snippet}
 
 which we may use like so:
 
@@ -295,7 +301,8 @@ julia> m
 
 and instead defined a more optimized representation of the same optic:
 
-\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}{fastsetindex.jl}
+\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos, label={Snippet \arabic{snippet}}, labelposition=topline]{julia}{fastsetindex.jl}
+\addtocounter{snippet}{1}
 
 Our example from above goes through just the same:
 
@@ -337,7 +344,7 @@ explicitly expose the state to the user, or if it does, tags the state with
 a particular choice or representative. Here are two (equivalent) interfaces to
 optics that have this property:
 
-\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos]{julia}{opticcall.jl}
+\inputminted[frame=lines,framesep=2mm,fontsize=\footnotesize, xleftmargin=0.5em, mathescape, linenos, label={Snippet \arabic{snippet}}, labelposition=topline]{julia}{opticcall.jl}
 
 With these definitions, our update operation from above becomes
 
@@ -1457,6 +1464,26 @@ Additionally, the composition rule for 3 optics is shown in the appendix in figu
 \label{fig:3optic}
 \end{figure*}
 
+\subsection{Well-behaved primitives}
+
+We say a primitive of an optic functor $\euro$ is \textit{well behaved} if the
+LHS of $\euro f$ is simply the original function `f', possibly with a capture
+of the input or output value, i.e. $\euro f = \langle \Delta_{SSA} \bbsemi
+(id \otimes f) | f^\star \rangle$ or $\euro f = \langle f \bbsemi \Delta_{SSA} | f^\star \rangle$.
+For functions of this form, various higher order concepts simplify and we can
+perform analysis efficiently using dynamic programming. Speciafically, for an
+order $n$ transform, we only need to do $n^2 - 1$ work rather than $2^n$ as would
+naively be expected. To see this, note that by repeatedly applying the transform,
+we can commute any function in our $n$-optic to just be a structural transform
+together with $f^{\star\star\ldots}$ where the number of stars is the total
+number of stars in the original expression. Then, letting numbers indicate
+the number of stars, we get the following sequence of patterns for
+increasing optics: $0$, $01$, $0121$, $01212321$, $0121232123432321$, which
+is amenable to dynamic programming analysis.
+
+\todo[inline]{Is this actually a useful notion? Certainly more advanced. Let's leave it here
+for now.}
+
 \section{Reverse mode AD}
 
 There are many ways to describe the difference between forward and reverse mode
@@ -1508,10 +1535,14 @@ or return a poison value on the backwards pass. This is a user level policy deci
 Lastly, we of course need to define derivatives for our primitives. We defer
 this task to ChainRules.jl.
 
-\subsection{Higher order AD}
+\section{Higher order AD}
 
-Let us investigate the structure of higher order AD. As an example,
-let's explicitly show the structure of $\overleftarrow{\partial} \overleftarrow{\partial} \text{sin}$:
+\subsection{Straightforwardly}
+
+Let us investigate the structure of higher order AD.
+One straightforward way to obtain the higher order transform is to simply
+treat the encoded optic as yet another SSA program.
+As an example, we may explicitly do the transform $\overleftarrow{\partial} \overleftarrow{\partial} \text{sin}$:
 
 \begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
 function |$\overleftarrow{\partial} \overleftarrow{\partial}$|sin(x)
@@ -1634,6 +1665,246 @@ dataflow path of the final answer:
         ;
     \end{tikzpicture}
 \end{center}
+
+For a more complex example, the same transform is done for a third order
+transform in the Appendix (figure \ref{3-ordernaive}).
+
+\subsection{Alternative encoding}
+
+The previous approach works, but it is somewhat unsatisfying. Why? For me the two
+primary reasons are that there is no manifest difference between the residuals
+and the "holes" of the optic and that control flow is somewhat non-transparent.
+At first order, the residual was encoded as the
+capture of the original closure. However, at second order, while most residuals
+are still closure captures, $\Delta^{\prime\prime}$ is a residual, but does not
+look like a capture. This shows up more at third order. To see what I mean
+when I say control-flow is non-transparent, consider the order in which the
+functions are called at third order:
+\newcommand{\op}{\overleftarrow{\partial}}
+\[
+\op\op f, \op \op \left( f^\star \right), \op \left( f^{\star\star} \right), \op \left( \left( \op f\right)^{\star} \right),
+\]\[
+\left( \op f\right)^{\star\star}, f^{\star\star\star}, \left( \op \left( f^\star \right) \right)^{\star}, \left( \op \op f\right)^{\star}
+\]
+
+(if it's not clear how to come up with this order, simply look at the second
+order diagram, add $\op$ in front of everything, then reverse the diagram,
+add $\star$ after everything and append the reversed diagram to the one that
+had $\op$ added). Comparing this to figure \ref{3-ordernaive} in the appendix,
+we see that in source code order, the sequence is $1,2,3,6,7,5,8$, so we need
+to do a lot of jumping around to keep track of what's happening.
+Can we re-arrange the encoding to make it easier to understand what's going on?
+Let's take a clue from the diagrams we've been working with, which do make the
+control flow order manifestly clear. What if instead of our second order example
+above, we wrote it as:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+function |$\partial^2$|sin(x)
+    sin(x), |$\Delta$|->begin
+        |$\Delta$| * cos(x), |$\Delta'$|->begin
+            |$\Delta'$|*cos(x), let |$\Delta'''$| = |$\Delta'$|*|$\Delta$|*(-sin(x))
+                |$\Delta''$|->|$\Delta''$|*cos(x) + |$\Delta'''$|
+            end
+        end
+    end
+end
+\end{minted}
+
+This avoids the two problems identified above: The $\Delta'''$ becomes an
+explicit capture and the order of operations becomes quite clear
+(outer functions are evaluated before their inner closures). This representation
+is a bit of a re-think of the standard transform, but it is entirely equivalent.
+To get more familiar with it, let's say, we'd like to take the third order transform
+of the following functions:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+function f(x)
+    y = g(x)
+    z = h(y)
+    return z
+end
+\end{minted}
+
+We would have:
+
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+function |$\op^3$|f(x)
+  |$y$|, |$\overline{y}$| = |$\op^3$|g(x)
+  |$z$|, |$\overline{z}$| = |$\op^3$|h(y)
+  |$z$|, |$\Delta$|->begin
+    |$\alpha$|, |$\overline{\alpha}$| = |$\overline{z}$|(|$\Delta$|)
+    |$\beta$|, |$\overline{\beta}$| = |$\overline{y}$|(|$\alpha$|)
+    |$\beta$|, |$\Delta'$|->begin
+      |$\gamma$|, |$\overline{\gamma}$| = |$\overline{\beta}$|(|$\Delta'$|)
+      |$\delta$|, |$\overline{\delta}$| = |$\overline{\alpha}$|(|$\gamma$|)
+      |$\delta$|, |$\Delta''$|->begin
+        |$\epsilon$|, |$\overline{\epsilon}$| = |$\overline{\delta}$|(|$\Delta''$|)
+        |$\zeta$|, |$\overline{\zeta}$| = |$\overline{\gamma}$|(|$\epsilon$|)
+        |$\zeta$|, |$\Delta'''$|->begin
+          |$\eta$|, |$\overline{\eta}$| = |$\overline{\zeta}$|(|$\Delta'''$|)
+          |$\theta$|, |$\overline{\theta}$| = |$\overline{\epsilon}$|(|$\eta$|)
+          |$\theta$|, |$\Delta^4$|->begin
+            |$\iota$|, |$\overline{\iota}$| = |$\overline{\theta}$|(|$\Delta^4$|)
+            |$\kappa$|, |$\overline{\kappa}$| = |$\overline{\eta}$|(|$\iota$|)
+            |$\kappa$|, |$\Delta^5$|->begin
+              |$\lambda$|, |$\overline{\lambda}$| = |$\overline{\kappa}$|(|$\Delta^5$|)
+              |$\mu$|, |$\overline{\mu}$| = |$\overline{\iota}$|(|$\lambda$|)
+              |$\mu$|, |$\Delta^6$|->begin
+                |$\nu$|, |$\overline{\nu}$| = |$\overline{\mu}$|(|$\Delta^6$|)
+                |$\xi$|, |$\overline{\xi}$| = |$\overline{\lambda}$|(|$\nu$|)
+                |$\xi$|, |$\Delta^7$|->begin
+                  |$o$| = |$\overline{\xi}$|(|$\Delta^7$|)
+                  |$\pi$| = |$\overline{\nu}$|(|$o$|)
+                  return |$\pi$|
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+\end{minted}
+
+We see still have the same number of functions, so the complexity isn't
+reduced, but at least it's fairly orderly. We do have to take special care of
+primitives, because we're no longer just applying the same transformation to
+the rule function itself. So suppose we have some primitive rule like:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+struct |$\nabla a$|
+    x
+end
+(::|$\nabla a$|) = ...
+
+function rrule(::typeof(a), x)
+    b(x), |$\nabla a$|(x)
+end
+
+\end{minted}
+
+For the first order, we would just expose the raw pullback as we do with
+the naive transform. However, for second order, things become slightly more
+complicated:
+
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+function |$\op^2 a$|(x)
+    (|$y$|, |$\overline{y}$|), |$\overline{\overline{y}}$| = |$\op \text{rrule}$|(a, x)
+    |$y$|, |$\Delta$|->begin
+        |$\alpha$|, |$\overline{\alpha}$| = |$\op \text{typeof(}\overline{y}\text{)}$|(|$\overline{y}$|, |$\Delta$|)
+        |$\alpha$|, |$\Delta'$|->begin
+            (|$\Delta'''$|, |$\beta$|) = |$\overline{\alpha}$|(|$\Delta'$|)
+            |$\beta$|, |$\Delta''$|->begin
+                # Drop gradient w.r.t. `rrule`
+                (_, a', x') = |$\overline{\overline{y}}$|(|$\Delta''$|, |$\Delta'''$|)
+                return (a', x')
+            end
+        end
+    end
+end
+\end{minted}
+
+It's worth comparing this with the explicitly written out and inlined version of
+sin above (which is a primitive).
+
+It's also worth taking a look at the third order version of that example to see
+the generalizing pattern:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+function |$\op^3 a$|(x)
+    (|$y$|, |$\overline{y}$|), |$\overline{\overline{y}}$| = |$\op^2 \text{rrule}$|(a, x)
+    |$y$|, |$\Delta$|->begin
+        (|$\alpha$|, |$\overline{\alpha}$|) = |$\op^2 \text{typeof(}\overline{y}\text{)}$|(|$\overline{y}$|, |$\Delta$|)
+        |$\alpha$|, |$\Delta'$|->begin
+            (|$\Delta'''$|, |$\beta$|), |$\overline{\beta}$| = |$\overline{\alpha}$|(|$\Delta'$|)
+            |$\beta$|, |$\Delta''$|->begin
+                (_, |$\gamma_1$|, |$\gamma_2$|), |$\overline{\gamma}$| = |$\overline{\overline{y}}$|(|$\Delta''$|, |$\Delta'''$|)
+                (|$\gamma_1$|, |$\gamma_2$|), |$\Delta^4$|->begin
+                    (|$\delta_1$|, |$\delta_2$|), |$\overline{\delta}$| = |$\overline{\gamma}$|((0, |$\Delta^4$|...))
+                    |$\delta_1$|, |$\Delta^5$|->begin
+                        |$\epsilon$|, |$\overline{\epsilon}$| = |$\overline{\beta}$|(|$\delta_2$|, |$\Delta^5$|)
+                        |$\epsilon$|, |$\Delta^6$|->begin
+                            (|$\zeta_1$|, |$\zeta_2$|)  = |$\overline{\epsilon}$|(|$\Delta^6$|)
+                            |$\zeta_2$|, |$\Delta^7$|->begin
+                                return |$\overline{\delta}$|(|$\Delta^7$|, |$\zeta_1$|)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+\end{minted}
+
+If this structure seems familiar, it should! In our $3$-optic diagram we
+build $3$-optics as pairs of $2$-optics that composed in a canonical way.
+This is just the very same thing (compare functions $l_{x_{x}}$ with
+closures returned from $\op^2 \text{rrule}$ and $r_{x_{x}}$ with
+closures returned from $\op^2 \text{typeof(}\overline{y}\text{)}$).
+
+There is one additional case that's worth considering: We allow explicitly
+calling the derivative operator in the primal. What happens when we encounter
+such a function. The answer is fairly straightforward. We're basically doing
+the inverse of the rrule case above. In particular, we're adapting an $n+1$
+optic to an $n$ optic by appropriate interleaving. Suppose we have a primal
+function $\nabla$ given by:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+function |$\nabla$|(f, x)
+    (|$a$|, |$\overline{a}$|) = |$\op$|(f, x)
+    |$y$| = g(a)
+    |$z$| = |$\overline{a}$|(y)
+    return |$z$|
+end
+\end{minted}
+
+Applying our transform, we get:
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+function |$\op\nabla$|(f, x)
+    (|$a$|, |$\overline{a}$|) = |$\op^2$|(f, x)
+    |$y$|, |$\overline{y}$| = |$\op g$|(a)
+    |$z$|, |$\overline{z}$| = |$\overline{a}$|(y)
+    |$z$|, |$\Delta$|->begin
+        |$\alpha$|, |$\overline{\alpha}$| = |$\overline{z}$|(|$\Delta$|)
+        |$\beta$| = |$\overline{y}$|(|$\alpha$|)
+        |$\epsilon$| = |$\overline{\alpha}$|(|$\beta$|)
+        return |$\epsilon$|
+    end
+end
+\end{minted}
+
+Note that we went through all four callbacks of the $2$-optic $\op^2(f, x)$,
+even though the top level optic only had two callbacks. For completeness,
+here is the third order version (second order transform):
+
+\begin{minted}[fontsize=\footnotesize,framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos,samepage]{julia}
+function |$\op^2\nabla$|(f, x)
+    (|$a$|, |$\overline{a}$|) = |$\op^3$|(f, x)
+    |$y$|, |$\overline{y}$| = |$\op g$|(a)
+    |$z$|, |$\overline{z}$| = |$\overline{a}$|(y)
+    |$z$|, |$\Delta$|->begin
+        |$\alpha$|, |$\overline{\alpha}$| = |$\overline{z}$|(|$\Delta$|)
+        |$\beta$|, |$\overline{\beta}$| = |$\overline{y}$|(|$\alpha$|)
+        |$\epsilon$|, |$\overline{\beta}$| = |$\overline{\alpha}$|(|$\beta$|)
+        |$\epsilon$|, |$\Delta'$|->begin
+            |$\lambda$|, |$\overline{\lambda}$| = |$\overline{\epsilon}$|(|$\Delta'$|)
+            |$\zeta$|, |$\overline{\zeta}$| = |$\overline{\beta}$|(|$\lambda$|)
+            |$\mu$|, |$\overline{\mu}$| = |$\overline{\lambda}$|(|$\zeta$|)
+            |$\mu$|, |$\Delta''$|->begin
+                |$\theta$|, |$\overline{\theta}$| = |$\overline{\mu}$|(|$\Delta''$|)
+                |$\iota$| = |$\overline{\zeta}$|(|$\theta$|)
+                |$\kappa$| = |$\overline{\theta}$|(|$\iota$|)
+                return |$\kappa$|
+            end
+        end
+    end
+end
+\end{minted}
 
 \section{Implementation details}
 
@@ -1787,6 +2058,50 @@ through examples.
     \end{center}
     \caption{Composition rule for 3-optics}
     \label{fig:3opticcomp}
+\end{figure*}
+
+\begin{figure*}
+\begin{minted}[fontsize=\huge, framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+function |$\overleftarrow{\partial} \overleftarrow{\partial}$|sin(x)
+    sin(x), |$\Delta$|->begin
+        |$\Delta$| * cos(x), |$\Delta'$|->begin
+            |$\Delta'$|*|$\Delta$|*(-sin(x)), |$\Delta'$|*cos(x)
+        end
+    end, (|$\Delta'''$|,|$\Delta''$|)->begin
+        |$\Delta''$|*cos(x) + |$\Delta'''$|
+    end
+end
+\end{minted}
+\caption{Explicitly written 2-nd order example (larger version)}
+\end{figure*}
+
+\begin{figure*}
+\begin{minted}[framesep=2mm,escapeinside=||,mathescape=true,frame=lines,linenos]{julia}
+function |$\overleftarrow{\partial} \overleftarrow{\partial} \overleftarrow{\partial}$|sin(x)
+    (sin(x), |$\Delta$|->begin # $\overleftarrow{\partial} \overleftarrow{\partial} (f^{\star})$
+        |$\Delta$| * cos(x), |$\Delta'$|->begin # $\overleftarrow{\partial} (f^{\star\star})$
+            |$\Delta'$|*|$\Delta$|*(-sin(x)), |$\Delta'$|*cos(x), ((|$\Delta^4$|,|$\Delta^5$|),)->begin # $ f^{\star\star\star} $
+                (-|$\Delta^4$|*|$\Delta'$|*|$\Delta$|*cos(x) +
+                    -|$\Delta^5$|*|$\Delta'$|*sin(x),
+                    -|$\Delta^4$|*|$\Delta'$|*sin(x)),
+                -|$\Delta^4$|*|$\Delta$|*sin(x)+|$\Delta^5$|*cos(x)
+            end
+        end, (|$\Delta^6$|,(|$\Delta^7$|,|$\Delta^8$|))->begin # $ \left(\overleftarrow{\partial}\left(f^\star\right)\right)^{\star} $
+            (|$\Delta^6$|*|$\Delta$|*(-sin(x)) + |$\Delta^7$|,
+                |$\Delta^6$|*cos(x) + |$\Delta^8$|)
+        end
+    end, (|$\Delta'''$|,|$\Delta''$|)->begin # $ \overleftarrow{\partial} \left( \left( \overleftarrow{\partial} f \right)^\star \right)  $
+        |$\Delta''$|*cos(x) + |$\Delta'''$|, |$\Delta^9$|->begin # $ \left( \overleftarrow{\partial} f \right)^{\star\star} $
+            (-|$\Delta^9$|*|$\Delta''$|*sin(x)),
+                (|$\Delta^9$|, |$\Delta^9$| * cos(x))
+        end
+    end), |$(((\Delta^{10}, \Delta^{11}), \Delta^{12}),)$|->begin # $ \left( \overleftarrow{\partial} \overleftarrow{\partial} f \right)^\star $
+        |$\Delta^{10}$|*cos(x) + |$\Delta^{11}$| + |$\Delta^{12}$|
+    end
+end
+\end{minted}
+\caption{Explicitly written out third-order example}
+\label{3-ordernaive}
 \end{figure*}
 
 \bibliographystyle{IEEEtran}
