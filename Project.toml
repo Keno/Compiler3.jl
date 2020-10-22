@@ -1,5 +1,3 @@
 name = "Compiler3"
 uuid = "295ecae3-efe4-4ca1-aea4-0da6d1044bf9"
-
-[deps]
-GPUCompiler = "61eb1bfa-7361-4325-ad38-22787b887f55"
+version = "0.1.0"

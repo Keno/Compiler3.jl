@@ -1,7 +1,6 @@
 using Compiler3
 using Compiler3: StaticSubGraph
 using Core.Compiler: MethodInstance
-using GPUCompiler
 
 # A semi-interesting, fully static function
 exp_kernel(x::Float64) = @Base.Math.horner(x, 1.66666666666666019037e-1,
