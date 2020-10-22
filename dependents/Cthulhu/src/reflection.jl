@@ -160,7 +160,6 @@ function find_callsites(CI, fg, cursor, slottypes; params=current_params(), kwar
                 else
                     ft = Base.unwrap_unionall(types[1])
                     name = ft.name
-                    @show name.name
                     ci = if nameof(name.module) == :CUDAnative && name.name == Symbol("#kw##cufunction")
                         ft = types[4]
                         # XXX: Simplify

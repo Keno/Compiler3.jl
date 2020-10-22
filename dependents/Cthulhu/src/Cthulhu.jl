@@ -269,7 +269,7 @@ function _descend(@nospecialize(F), @nospecialize(TT); params=current_params(), 
     ei = ExtractingInterpreter()
     mi, result = infer_function(ei, Tuple{typeof(F), TT.parameters...})
     ei, ssg = ei, StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
-    _descend(ei, mi; iswarn=false)
+    _descend(ssg; iswarn=false)
 end
 
 descend_code_typed(b::Bookmark; kw...) =
