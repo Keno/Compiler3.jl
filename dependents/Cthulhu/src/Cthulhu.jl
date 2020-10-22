@@ -115,10 +115,10 @@ descend_code_warntype(foo, Tuple{})
 descend_code_warntype(f, @nospecialize(tt); kwargs...) =
     _descend_with_error_handling(f, tt; iswarn=true, kwargs...)
 
-function _descend_with_error_handling(args...; kwargs...)
+function _descend_with_error_handling(args...; iswarn, kwargs...)
     @nospecialize
     try
-        _descend(args...; kwargs...)
+        _descend(args...; iswarn, kwargs...)
     catch x
         if x isa InterruptException
             return nothing
@@ -144,7 +144,7 @@ using Compiler3: ExtractingInterpreter, infer_function, StaticSubGraph,
 # src/reflection.jl has the tools to discover methods
 # src/ui.jl provides the user facing interface to which _descend responds
 ##
-function _descend(fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params=current_params(), optimize::Bool=true, interruptexc::Bool=true, kwargs...)
+function _descend(ei::ExtractingInterpreter, fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params=current_params(), optimize::Bool=true, interruptexc::Bool=true, kwargs...)
     debuginfo = true
     if :debuginfo in keys(kwargs)
         selected = kwargs[:debuginfo]
@@ -166,7 +166,7 @@ function _descend(fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params
 
         if display_CI
             if !optimize
-                msgs = find_msgs(fg, cursor)
+                msgs = find_msgs(ei, cursor)
             else
                 msgs = Any[]
             end
@@ -215,7 +215,7 @@ function _descend(fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params
                 continue
             end
 
-            _descend(fg, next_cursor; params=params, optimize=optimize,
+            _descend(ei, fg, next_cursor; params=params, optimize=optimize,
                      iswarn=iswarn, debuginfo=debuginfo_key, kwargs...)
 
         elseif toggle === :warn
@@ -248,7 +248,10 @@ function _descend(fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params
             if mod !== nothing
                 revise = getfield(mod, :revise)
                 revise()
-                mi = first_method_instance(mi.specTypes)
+                ei = ExtractingInterpreter()
+                mi, result = infer_function(ei, mi.specTypes)
+                fg = StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
+                cursor = entrypoint(fg)
             end
         elseif toggle === :edit
             edit(whereis(mi.def)...)
@@ -265,11 +268,12 @@ function _descend(fg::FunctionGraph, cursor=entrypoint(fg); iswarn::Bool, params
     end
 end
 
-function _descend(@nospecialize(F), @nospecialize(TT); params=current_params(), kwargs...)
+function _descend(@nospecialize(F::Function), @nospecialize(TT::Type);
+                  params=current_params(), kwargs...)
     ei = ExtractingInterpreter()
     mi, result = infer_function(ei, Tuple{typeof(F), TT.parameters...})
-    ei, ssg = ei, StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
-    _descend(ssg; iswarn=false)
+    ssg = StaticSubGraph(ei.code, collect(keys(ei.code)), mi)
+    _descend(ei, ssg; kwargs...)
 end
 
 descend_code_typed(b::Bookmark; kw...) =

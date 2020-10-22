@@ -70,7 +70,7 @@ function cthulhu_source(io::IO, mi, optimize, debuginfo, params, config::Cthulhu
     highlight(io, src, "julia", config)
 end
 
-cthulhu_print_typed(args...) = cthulhu_warntype(stdout, args...)
+cthulhu_print_typed(args...) = cthulhu_print_typed(stdout, args...)
 function cthulhu_print_typed(io::IO, src, rettype, debuginfo, msgs, iswarn)
     debuginfo = Base.IRShow.debuginfo(debuginfo)
     lineprinter = Base.IRShow.__debuginfo[debuginfo](src)
