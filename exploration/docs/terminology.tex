@@ -1802,9 +1802,9 @@ complicated:
 function |$\op^2 a$|(x)
     (|$y$|, |$\overline{y}$|), |$\overline{\overline{y}}$| = |$\op \text{rrule}$|(a, x)
     |$y$|, |$\Delta$|->begin
-        |$\alpha$|, |$\overline{\alpha}$| = |$\op \text{typeof(}\overline{y}\text{)}$|(|$\overline{y}$|, |$\Delta$|)
-        |$\alpha$|, |$\Delta'$|->begin
-            (|$\Delta'''$|, |$\beta$|) = |$\overline{\alpha}$|(|$\Delta'$|)
+        (|$\alpha_1$|, |$\alpha_2$|), |$\overline{\alpha}$| = |$\op \text{typeof(}\overline{y}\text{)}$|(|$\overline{y}$|, |$\Delta$|)
+        (|$\alpha_1$|, |$\alpha_2$|), (|$\Delta'_1$|, |$\Delta'_2$|)->begin
+            (|$\Delta'''$|, |$\beta$|) = |$\overline{\alpha}$|((|$\Delta'_1$|, |$\Delta'_2$|))
             |$\beta$|, |$\Delta''$|->begin
                 # Drop gradient w.r.t. `rrule`
                 (_, a', x') = |$\overline{\overline{y}}$|(|$\Delta''$|, |$\Delta'''$|)
@@ -1825,17 +1825,17 @@ the generalizing pattern:
 function |$\op^3 a$|(x)
     (|$y$|, |$\overline{y}$|), |$\overline{\overline{y}}$| = |$\op^2 \text{rrule}$|(a, x)
     |$y$|, |$\Delta$|->begin
-        (|$\alpha$|, |$\overline{\alpha}$|) = |$\op^2 \text{typeof(}\overline{y}\text{)}$|(|$\overline{y}$|, |$\Delta$|)
-        |$\alpha$|, |$\Delta'$|->begin
-            (|$\Delta'''$|, |$\beta$|), |$\overline{\beta}$| = |$\overline{\alpha}$|(|$\Delta'$|)
+        ((|$\alpha_1$|, |$\alpha_2$|), |$\overline{\alpha}$|) = |$\op^2 \text{typeof(}\overline{y}\text{)}$|(|$\overline{y}$|, |$\Delta$|)
+        (|$\alpha_1$|, |$\alpha_2$|), (|$\Delta'_1$|, |$\Delta'_2$|)->begin
+            (|$\Delta'''$|, |$\beta$|), |$\overline{\beta}$| = |$\overline{\alpha}$|((|$\Delta'_1$|, |$\Delta'_2$|))
             |$\beta$|, |$\Delta''$|->begin
                 (_, |$\gamma_1$|, |$\gamma_2$|), |$\overline{\gamma}$| = |$\overline{\overline{y}}$|(|$\Delta''$|, |$\Delta'''$|)
-                (|$\gamma_1$|, |$\gamma_2$|), |$\Delta^4$|->begin
-                    (|$\delta_1$|, |$\delta_2$|), |$\overline{\delta}$| = |$\overline{\gamma}$|((0, |$\Delta^4$|...))
+                (|$\gamma_1$|, |$\gamma_2$|), (|$\Delta^4_1$|,|$\Delta^4_2$|)->begin
+                    (|$\delta_1$|, |$\delta_2$|), |$\overline{\delta}$| = |$\overline{\gamma}$|((0, |$\Delta^4_1$|, |$\Delta^4_2$|))
                     |$\delta_1$|, |$\Delta^5$|->begin
-                        |$\epsilon$|, |$\overline{\epsilon}$| = |$\overline{\beta}$|(|$\delta_2$|, |$\Delta^5$|)
-                        |$\epsilon$|, |$\Delta^6$|->begin
-                            (|$\zeta_1$|, |$\zeta_2$|)  = |$\overline{\epsilon}$|(|$\Delta^6$|)
+                        (|$\epsilon_1$|, |$\epsilon_2$|), |$\overline{\epsilon}$| = |$\overline{\beta}$|(|$\delta_2$|, |$\Delta^5$|)
+                        (|$\epsilon_1$|, |$\epsilon_2$|), (|$\Delta^6_1$|,|$\Delta^6_2$|)->begin
+                            (|$\zeta_1$|, |$\zeta_2$|)  = |$\overline{\epsilon}$|((|$\Delta^6_1$|,|$\Delta^6_2$|))
                             |$\zeta_2$|, |$\Delta^7$|->begin
                                 return |$\overline{\delta}$|(|$\Delta^7$|, |$\zeta_1$|)
                             end
